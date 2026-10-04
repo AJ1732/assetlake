@@ -1,13 +1,13 @@
 import "server-only";
 
-import { DEMO_APPLICATION_ID, getAssetLake } from "./assetLake";
+import { DEMO_APPLICATION_ID, getAssetLake } from "./asset-lake";
 import { serverEnv as environment } from "./env";
-import type { DeleteDependencies } from "./http/deleteImageHandler";
-import type { SessionDependencies } from "./http/sessionHandlers";
-import type { UploadDependencies } from "./http/uploadImageHandler";
+import type { DeleteDependencies } from "./http/delete-image-handler";
+import type { SessionDependencies } from "./http/session-handlers";
+import type { UploadDependencies } from "./http/upload-image-handler";
 import { createUploadQuota } from "./quota";
 import { getSessionCodec } from "./session";
-import { systemClock } from "./systemClock";
+import { systemClock } from "./system-clock";
 
 export type RouteDependencies = UploadDependencies &
   DeleteDependencies &

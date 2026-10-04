@@ -1,12 +1,12 @@
 import "server-only";
 
-import { failure } from "../httpErrors";
-import type { HandlerResult } from "../requestLog";
+import { failure } from "../http-errors";
+import type { HandlerResult } from "../request-log";
 import {
   type DemoSession,
   readSessionCookie,
   type SessionCodec,
-} from "../sessionToken";
+} from "../session-token";
 
 export type SessionVerifier = Pick<SessionCodec, "verify">;
 

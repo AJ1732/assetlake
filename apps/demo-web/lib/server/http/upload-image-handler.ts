@@ -10,10 +10,10 @@ import {
 import { IMAGE_PURPOSES } from "@assetlake/sanity-schema/constants";
 import { z } from "zod";
 
-import { failure, toFailureResponse } from "../httpErrors";
+import { failure, toFailureResponse } from "../http-errors";
 import type { UploadQuota } from "../quota";
-import type { HandlerResult } from "../requestLog";
-import { sessionEntity } from "../sessionToken";
+import type { HandlerResult } from "../request-log";
+import { sessionEntity } from "../session-token";
 import {
   authenticate,
   type SessionVerifier,

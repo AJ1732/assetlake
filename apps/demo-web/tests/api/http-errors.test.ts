@@ -5,7 +5,7 @@ import {
   GENERIC_SERVER_MESSAGE,
   HTTP_STATUS,
   toFailureResponse,
-} from "@/lib/server/httpErrors";
+} from "@/lib/server/http-errors";
 
 // The B03 spec status table, plus PRESET_INVALID (added to core after the table was written).
 const SPEC_STATUS: Record<string, number> = {

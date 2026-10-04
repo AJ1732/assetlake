@@ -2,7 +2,7 @@ import "server-only";
 
 import { isAssetLakeError } from "@assetlake/core";
 
-import { toFailureResponse } from "./httpErrors";
+import { toFailureResponse } from "./http-errors";
 
 export interface HandlerResult {
   response: Response;

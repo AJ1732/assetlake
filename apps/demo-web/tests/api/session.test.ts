@@ -5,13 +5,13 @@ import {
   clearSession,
   createSession,
   MAX_SESSION_BODY_BYTES,
-} from "@/lib/server/http/sessionHandlers";
+} from "@/lib/server/http/session-handlers";
 import {
   createSessionCodec,
   generateDemoUserId,
   readSessionCookie,
   SESSION_COOKIE_NAME,
-} from "@/lib/server/sessionToken";
+} from "@/lib/server/session-token";
 
 import {
   BASE_URL,

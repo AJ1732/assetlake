@@ -9,7 +9,7 @@ export default defineConfig({
       "@": fileURLToPath(new URL(".", import.meta.url)),
       // Next swaps server-only for an empty module in server bundles; Vitest must do the same.
       "server-only": fileURLToPath(
-        new URL("tests/api/support/serverOnlyStub.ts", import.meta.url),
+        new URL("tests/api/support/server-only-stub.ts", import.meta.url),
       ),
     },
   },

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { deleteImage } from "@/lib/server/http/deleteImageHandler";
-import { GENERIC_SERVER_MESSAGE } from "@/lib/server/httpErrors";
+import { deleteImage } from "@/lib/server/http/delete-image-handler";
+import { GENERIC_SERVER_MESSAGE } from "@/lib/server/http-errors";
 
 import {
   createTestContext,

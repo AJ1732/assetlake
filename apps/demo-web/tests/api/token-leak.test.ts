@@ -1,12 +1,12 @@
 import { signatureBytes } from "@assetlake/core/testing";
 import { describe, it, vi } from "vitest";
 
-import { deleteImage } from "@/lib/server/http/deleteImageHandler";
-import { createSession } from "@/lib/server/http/sessionHandlers";
+import { deleteImage } from "@/lib/server/http/delete-image-handler";
+import { createSession } from "@/lib/server/http/session-handlers";
 import {
   MAX_UPLOAD_REQUEST_BYTES,
   uploadImage,
-} from "@/lib/server/http/uploadImageHandler";
+} from "@/lib/server/http/upload-image-handler";
 
 import {
   createTestContext,

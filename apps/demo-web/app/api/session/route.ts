@@ -1,6 +1,9 @@
 import { getRouteDependencies } from "@/lib/server/dependencies";
-import { clearSession, createSession } from "@/lib/server/http/sessionHandlers";
-import { withRequestLog } from "@/lib/server/requestLog";
+import {
+  clearSession,
+  createSession,
+} from "@/lib/server/http/session-handlers";
+import { withRequestLog } from "@/lib/server/request-log";
 
 export const POST = withRequestLog("POST /api/session", (request) =>
   createSession(request, getRouteDependencies()),

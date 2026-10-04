@@ -1,8 +1,8 @@
 import { AssetLakeError } from "@assetlake/core";
 import { describe, expect, it, vi } from "vitest";
 
-import { failure } from "@/lib/server/httpErrors";
-import { withRequestLog } from "@/lib/server/requestLog";
+import { failure } from "@/lib/server/http-errors";
+import { withRequestLog } from "@/lib/server/request-log";
 
 import { BASE_URL, TEST_TOKEN } from "./support/fixtures";
 

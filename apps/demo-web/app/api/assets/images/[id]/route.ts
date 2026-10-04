@@ -1,6 +1,6 @@
 import { getRouteDependencies } from "@/lib/server/dependencies";
-import { deleteImage } from "@/lib/server/http/deleteImageHandler";
-import { withRequestLog } from "@/lib/server/requestLog";
+import { deleteImage } from "@/lib/server/http/delete-image-handler";
+import { withRequestLog } from "@/lib/server/request-log";
 
 // Explicit type rather than the generated RouteContext so tsc passes without .next/types.
 type ImageRouteContext = { params: Promise<{ id: string }> };

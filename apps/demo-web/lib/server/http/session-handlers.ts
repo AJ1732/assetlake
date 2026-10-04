@@ -3,13 +3,13 @@ import "server-only";
 import type { ApiSuccess } from "@assetlake/core/contracts";
 import { z } from "zod";
 
-import { failure } from "../httpErrors";
-import type { HandlerResult } from "../requestLog";
+import { failure } from "../http-errors";
+import type { HandlerResult } from "../request-log";
 import {
   clearedSessionCookie,
   type SessionCodec,
   sessionCookie,
-} from "../sessionToken";
+} from "../session-token";
 
 export interface SessionDependencies {
   sessions: Pick<SessionCodec, "issue" | "matchesPasscode">;

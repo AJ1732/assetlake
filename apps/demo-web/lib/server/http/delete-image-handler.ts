@@ -2,9 +2,9 @@ import "server-only";
 
 import type { AssetLake } from "@assetlake/core";
 
-import { failure, toFailureResponse } from "../httpErrors";
-import type { HandlerResult } from "../requestLog";
-import { sessionEntity } from "../sessionToken";
+import { failure, toFailureResponse } from "../http-errors";
+import type { HandlerResult } from "../request-log";
+import { sessionEntity } from "../session-token";
 import {
   authenticate,
   type SessionVerifier,

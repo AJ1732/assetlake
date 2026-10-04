@@ -8,10 +8,10 @@ import {
   type DemoSession,
   SESSION_COOKIE_NAME,
   type SessionCodec,
-} from "./sessionToken";
-import { systemClock } from "./systemClock";
+} from "./session-token";
+import { systemClock } from "./system-clock";
 
-export type { DemoSession } from "./sessionToken";
+export type { DemoSession } from "./session-token";
 
 let codec: SessionCodec | undefined;
 

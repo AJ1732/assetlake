@@ -5,8 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   MAX_UPLOAD_REQUEST_BYTES,
   uploadImage,
-} from "@/lib/server/http/uploadImageHandler";
-import { GENERIC_SERVER_MESSAGE } from "@/lib/server/httpErrors";
+} from "@/lib/server/http/upload-image-handler";
+import { GENERIC_SERVER_MESSAGE } from "@/lib/server/http-errors";
 
 import {
   APPLICATION_ID,

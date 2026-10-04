@@ -13,7 +13,7 @@ import {
   createSessionCodec,
   type DemoSession,
   SESSION_COOKIE_NAME,
-} from "@/lib/server/sessionToken";
+} from "@/lib/server/session-token";
 
 export const TEST_TOKEN = "sk-test-write-token-must-never-leak";
 export const TEST_PASSCODE = "campus-demo-passcode";

@@ -17,7 +17,7 @@ Framework-neutral AssetLake domain package: policy-checked image upload to Sanit
 import { createAssetLake } from "@assetlake/core";
 
 export const assetLake = createAssetLake({
-  projectId: "oshzwvjy",
+  projectId: process.env.SANITY_PROJECT_ID!, // your project; nothing here is tied to the demo's
   dataset: process.env.SANITY_DATASET!,
   apiVersion: "2026-10-04",
   token: process.env.SANITY_WRITE_TOKEN!, // server only, never NEXT_PUBLIC_
@@ -43,6 +43,40 @@ await assetLake.images.delete({
   actorEntity: { type: "user", id: session.userId },
 });
 ```
+
+## Use it from any backend
+
+The same `createAssetLake` call works in Express, Fastify, Next.js Route Handlers, queue workers and one-off scripts. The rule is that the token stays on the server. A script that uploads a file from disk:
+
+```ts
+// upload.ts: npx tsx upload.ts ./photo.png
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
+import { createAssetLake } from "@assetlake/core";
+
+const assetLake = createAssetLake({
+  projectId: process.env.SANITY_PROJECT_ID!,
+  dataset: process.env.SANITY_DATASET!,
+  apiVersion: "2026-10-04",
+  token: process.env.SANITY_WRITE_TOKEN!,
+});
+
+const file = process.argv[2];
+const image = await assetLake.images.upload({
+  body: new Uint8Array(await readFile(file)),
+  filename: path.basename(file),
+  contentType: "image/png",
+  applicationId: "my-application",
+  purpose: "content",
+  entity: { type: "script", id: "local" },
+  actorId: "local",
+});
+
+console.log(await assetLake.images.url(image.id, { preset: "thumb" }));
+```
+
+Use a TypeScript runner such as `tsx`, not plain `node`. Until the npm build lands, the package ships TypeScript source with extensionless imports, and Node's built-in type stripping can't resolve those. The application, policy and preset have to exist in your dataset first. The root README's "Use AssetLake with your own Sanity project" shows the one-time setup.
 
 ## Browser usage
 

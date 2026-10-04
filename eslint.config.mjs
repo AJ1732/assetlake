@@ -58,6 +58,57 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // Architecture lock §6.3: core stays framework-neutral.
+    files: ["packages/assetlake-core/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: ["next", "react", "react-dom", "express"],
+          patterns: [
+            {
+              group: ["next/*", "@sanity/sdk-react", "@sanity/ui"],
+              message:
+                "@assetlake/core must not depend on UI or framework code.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // "@assetlake/core/url" ships to browsers: no write client, Node built-ins, or upload path.
+    files: [
+      "packages/assetlake-core/src/url.ts",
+      "packages/assetlake-core/src/contracts.ts",
+      "packages/assetlake-core/src/delivery/imageUrls.ts",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: ["next", "react", "react-dom", "express"],
+          patterns: [
+            {
+              group: [
+                "@sanity/client",
+                "node:*",
+                "file-type",
+                "zod",
+                "**/store/*",
+                "**/images/*",
+                "**/client/*",
+                "**/testing/*",
+              ],
+              message:
+                "Browser-safe module: keep server-only code out of @assetlake/core/url.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   prettier,
   // Override default ignores of eslint-config-next.
   globalIgnores([

@@ -110,6 +110,37 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    // demo-web code that can reach a browser bundle must not import the write path. Server-only
+    // loaders opt out with the *.server.ts suffix (and `import "server-only"`).
+    files: ["apps/demo-web/{components,features,lib/public}/**/*.{ts,tsx}"],
+    ignores: ["**/*.server.{ts,tsx}", "**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@assetlake/core",
+              message:
+                "Holds the write token. Use @assetlake/core/url or @assetlake/core/contracts in client code.",
+            },
+            {
+              name: "@assetlake/core/testing",
+              message: "Test doubles are for *.test.ts files only.",
+            },
+          ],
+          patterns: [
+            {
+              group: ["@/lib/server/*", "**/lib/server/*"],
+              message:
+                "lib/server is server-only. Load data in a *.server.ts module or a Server Component.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // asset-console is a Vite app inside the Sanity Dashboard, not Next: plain <img> is correct.
     files: ["apps/asset-console/**/*.{ts,tsx}"],
     rules: {
@@ -138,6 +169,14 @@ const eslintConfig = defineConfig([
           ],
         },
       ],
+    },
+  },
+  {
+    // Kebab-case file names: names that differ only in case collide on macOS's case-insensitive
+    // filesystem. asset-console has its own block above; core and sanity-schema follow in B06.
+    files: ["apps/demo-web/{app,components,features,lib,tests}/**/*.{ts,tsx}"],
+    rules: {
+      "unicorn/filename-case": ["error", { case: "kebabCase" }],
     },
   },
   prettier,

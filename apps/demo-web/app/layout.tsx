@@ -1,21 +1,47 @@
 import "./globals.css";
 
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import {
+  IBM_Plex_Mono,
+  IBM_Plex_Sans,
+  Instrument_Serif,
+} from "next/font/google";
+import { preconnect } from "react-dom";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+import { cn } from "@/lib/utils";
+
+const bodyFont = IBM_Plex_Sans({
+  variable: "--font-body",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const displayFont = Instrument_Serif({
+  variable: "--font-display",
   subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+});
+
+const monoFont = IBM_Plex_Mono({
+  variable: "--font-code",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
-  title: "Next App Template",
-  description: "",
+  title: { default: "AssetLake", template: "%s · AssetLake" },
+  description:
+    "Upload public images through your backend once, then serve every transformed size straight from cdn.sanity.io.",
+};
+
+// Values mirror --background in globals.css (oklch converted to hex for the meta tag).
+export const viewport: Viewport = {
+  colorScheme: "light dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8f5ef" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c1016" },
+  ],
 };
 
 export default function RootLayout({
@@ -23,10 +49,19 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Every AssetLake image on every page comes from this host.
+  preconnect("https://cdn.sanity.io");
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={cn(
+        "h-full",
+        "antialiased",
+        bodyFont.variable,
+        displayFont.variable,
+        monoFont.variable,
+        "font-sans",
+      )}
     >
       <body className="flex min-h-full flex-col">{children}</body>
     </html>

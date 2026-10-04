@@ -10,7 +10,10 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    files: ["**/*.{js,ts,jsx,tsx,mjs,cjs}"],
+    settings: { next: { rootDir: "apps/demo-web/" } },
+  },
+  {
+    files: ["**/*.{js,ts,jsx,tsx,mjs,mts,cjs}"],
     plugins: {
       "simple-import-sort": eslintPluginSimpleImportSort,
       unicorn: unicornPlugin,
@@ -58,12 +61,16 @@ const eslintConfig = defineConfig([
   prettier,
   // Override default ignores of eslint-config-next.
   globalIgnores([
-    ".next/**",
-    ".vercel/**",
-    "coverage/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
+    "**/.next/**",
+    "**/.vercel/**",
+    "**/coverage/**",
+    "**/out/**",
+    "**/build/**",
+    "**/dist/**",
+    "**/playwright-report/**",
+    "**/test-results/**",
+    "**/next-env.d.ts",
+    "docs/**",
   ]),
 ]);
 

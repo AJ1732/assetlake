@@ -1,67 +1,34 @@
-# Next.js Template
+# AssetLake
 
-This is a Next.js 16 template using the App Router, TypeScript, ESLint, Prettier, Husky, `lint-staged`, and commitlint.
+Sanity-backed public image infrastructure: upload once through a trusted backend, keep structured metadata in Sanity Content Lake, and deliver transformed variants from Sanity's Asset CDN.
 
-## Getting Started
+**Standard Content Lake assets are public by URL. AssetLake is for public images only.**
 
-Install dependencies:
+Full README lands at submission. This is the workspace map.
+
+## Workspace
+
+| Path                      | Package                    | Role                                                      |
+| ------------------------- | -------------------------- | --------------------------------------------------------- |
+| `apps/demo-web`           | `@assetlake/demo-web`      | Next.js 16 demo + Route Handler upload boundary (Railway) |
+| `apps/asset-console`      | `@assetlake/asset-console` | Sanity App SDK operations console (added in B05)          |
+| `packages/assetlake-core` | `@assetlake/core`          | Framework-neutral domain/service package                  |
+| `packages/sanity-schema`  | `@assetlake/sanity-schema` | Content model, schema deploy, TypeGen, seed               |
+
+## Requirements
+
+Node 24.x (`.nvmrc`), pnpm via Corepack.
 
 ```bash
+nvm use
+corepack enable
 pnpm install
-```
-
-Start the development server:
-
-```bash
-pnpm dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Available Scripts
-
-```bash
-pnpm dev
+pnpm check        # lint + typecheck + format check
+pnpm test         # gate lane (Vitest, all projects)
+pnpm test:live    # eval lane against a real Sanity dataset
+pnpm test:e2e     # Playwright (demo-web)
 pnpm build
-pnpm start
-pnpm lint
-pnpm lint:fix
-pnpm typecheck
-pnpm format
-pnpm format:check
-pnpm check
-pnpm commitlint
-pnpm fix
+pnpm dev          # demo-web on http://localhost:3000
 ```
 
-## Script Purpose
-
-- `pnpm dev` starts the local development server.
-- `pnpm build` creates a production build.
-- `pnpm start` serves the production build.
-- `pnpm lint` runs ESLint across the repository.
-- `pnpm lint:fix` runs ESLint with automatic fixes.
-- `pnpm typecheck` runs TypeScript in no-emit mode.
-- `pnpm format` formats the repository with Prettier.
-- `pnpm format:check` verifies formatting without changing files.
-- `pnpm check` runs lint, typecheck, and format checks.
-- `pnpm commitlint <commit-message-file>` validates a commit message file.
-- `pnpm fix` runs auto-fixable maintenance tasks.
-
-## Git Hooks
-
-Husky is configured with `pre-commit` and `commit-msg` hooks.
-
-Before commit creation, `lint-staged` runs against staged files only:
-
-- ESLint with `--fix` for JavaScript and TypeScript files
-- Prettier `--write` for supported staged files
-
-Commit messages are validated with commitlint using the Conventional Commits preset.
-
-This keeps commits fast while `pnpm check` remains available for full-repository validation.
-
-## Notes
-
-- ESLint uses the flat config format required by Next.js 16.
-- Prettier is configured with `prettier-plugin-tailwindcss`.
+Copy `.env.example` to `apps/demo-web/.env.local` and fill it in. Never commit `.env*` files.

@@ -74,16 +74,28 @@ export function useImageUpload({
 }
 
 /**
- * Callback ref for the preview <img>: revokes its object URL when the element detaches or the URL
- * changes (React 19 ref cleanup). Memoized per URL, because a new callback identity on every render
- * would revoke the URL that is still on screen.
+ * Callback ref for the preview <img>: revokes its object URL once the element is really gone or shows
+ * a different URL. Memoized per URL, because a new callback identity on every render would detach
+ * and revoke the URL that is still on screen.
  */
 export function useRevokeObjectUrlOnDetach(objectUrl: string | null) {
   return useCallback(
-    (node: HTMLImageElement | null) => {
-      if (!node || !objectUrl) return;
-      return () => URL.revokeObjectURL(objectUrl);
-    },
+    (node: Pick<HTMLImageElement, "isConnected" | "src"> | null) =>
+      node && objectUrl ? revokeWhenDetached(node, objectUrl) : undefined,
     [objectUrl],
   );
+}
+
+// React 19 StrictMode detaches and re-attaches every ref once in development. Revoking synchronously
+// in the cleanup broke the re-attached preview, so the check waits a tick and spares a URL still shown.
+export function revokeWhenDetached(
+  node: Pick<HTMLImageElement, "isConnected" | "src">,
+  objectUrl: string,
+): () => void {
+  return () => {
+    setTimeout(() => {
+      if (!node.isConnected || node.src !== objectUrl)
+        URL.revokeObjectURL(objectUrl);
+    }, 0);
+  };
 }

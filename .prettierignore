@@ -10,3 +10,4 @@ playwright-report
 test-results
 docs
 pnpm-lock.yaml
+.sanity

@@ -1,9 +1,14 @@
-import { expect, test } from "@playwright/test";
-
-import { logIn, requirePasscode, uploadAvatar } from "./fixtures/playground";
+import {
+  expect,
+  logIn,
+  requirePasscode,
+  test,
+  uploadAvatar,
+} from "./fixtures/playground";
 
 test("an upload in one tab appears on /live in another within 10s, without a reload", async ({
   browser,
+  uploads,
 }) => {
   requirePasscode();
   const viewerContext = await browser.newContext();
@@ -22,7 +27,7 @@ test("an upload in one tab appears on /live in another within 10s, without a rel
   });
 
   await logIn(uploader);
-  const image = await uploadAvatar(uploader);
+  const image = await uploadAvatar(uploader, uploads);
 
   await expect(viewer.locator(`[data-image-id="${image.id}"]`)).toBeVisible({
     timeout: 10_000,

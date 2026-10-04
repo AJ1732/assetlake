@@ -1,9 +1,9 @@
-import { expect, test } from "@playwright/test";
-
 import {
   assetHash,
+  expect,
   logIn,
   requirePasscode,
+  test,
   uploadAvatar,
 } from "./fixtures/playground";
 
@@ -13,6 +13,7 @@ test.describe("upload then read from cdn.sanity.io", () => {
   test("avatar and preset matrix render straight from cdn.sanity.io", async ({
     page,
     baseURL,
+    uploads,
   }) => {
     const requests: Array<{ url: string; type: string }> = [];
     page.on("request", (request) =>
@@ -20,7 +21,7 @@ test.describe("upload then read from cdn.sanity.io", () => {
     );
 
     await logIn(page);
-    const image = await uploadAvatar(page);
+    const image = await uploadAvatar(page, uploads);
     const hash = assetHash(image.assetId);
     expect(new URL(image.url).host).toBe("cdn.sanity.io");
 
@@ -66,10 +67,14 @@ test.describe("upload then read from cdn.sanity.io", () => {
     expect(
       requests.filter((request) => request.url.includes("/_next/image")),
     ).toEqual([]);
+    // Network requests only: a blob: preview shares the app's origin but never leaves the browser.
+    const isNetworkRequest = (url: string) => /^https?:/.test(url);
     expect(
       requests.filter(
         (request) =>
-          request.type === "image" && new URL(request.url).origin === appOrigin,
+          request.type === "image" &&
+          isNetworkRequest(request.url) &&
+          new URL(request.url).origin === appOrigin,
       ),
     ).toEqual([]);
   });

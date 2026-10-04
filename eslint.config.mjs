@@ -124,6 +124,10 @@ const eslintConfig = defineConfig([
               message:
                 "Holds the write token. Use @assetlake/core/url or @assetlake/core/contracts in client code.",
             },
+            {
+              name: "@assetlake/core/testing",
+              message: "Test doubles are for *.test.ts files only.",
+            },
           ],
           patterns: [
             {
@@ -137,8 +141,39 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    // asset-console is a Vite app inside the Sanity Dashboard, not Next: plain <img> is correct.
+    files: ["apps/asset-console/**/*.{ts,tsx}"],
+    rules: {
+      "@next/next/no-img-element": "off",
+      // Case-only name collisions break typecheck on macOS (seen in B04).
+      "unicorn/filename-case": ["error", { case: "kebabCase" }],
+    },
+  },
+  {
+    // The console ships to browsers: URL building comes from @assetlake/core/url only (B05 spec).
+    files: ["apps/asset-console/src/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@assetlake/core",
+              message: "Server entry. Import from @assetlake/core/url.",
+            },
+            {
+              name: "@assetlake/core/testing",
+              message: "Test doubles are for *.test.ts files only.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // Kebab-case file names: names that differ only in case collide on macOS's case-insensitive
-    // filesystem. Scoped to demo-web until B06 renames core, sanity-schema, and asset-console.
+    // filesystem. asset-console has its own block above; core and sanity-schema follow in B06.
     files: ["apps/demo-web/{app,components,features,lib,tests}/**/*.{ts,tsx}"],
     rules: {
       "unicorn/filename-case": ["error", { case: "kebabCase" }],
@@ -156,6 +191,7 @@ const eslintConfig = defineConfig([
     "**/playwright-report/**",
     "**/test-results/**",
     "**/next-env.d.ts",
+    "**/.sanity/**",
     "docs/**",
   ]),
 ]);

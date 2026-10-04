@@ -9,7 +9,7 @@ import {
 
 import type { PresetFields, PresetRow } from "./types";
 
-// Browser-side twin of core's toTransform (presets/presetResolver.ts), which uses zod and cannot
+// Browser-side twin of core's toTransform (presets/preset-resolver.ts), which uses zod and cannot
 // ship through @assetlake/core/url. Same rules, but it reports issues instead of throwing so a
 // half-edited draft renders a warning, not a broken URL. presetTransform.test.ts keeps the twins equal.
 

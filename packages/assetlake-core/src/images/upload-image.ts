@@ -1,17 +1,17 @@
 import type { AssetLakeImageResult, UploadImageInput } from "../contracts";
-import { AssetLakeError, isAssetLakeError } from "../errors/AssetLakeError";
+import { AssetLakeError, isAssetLakeError } from "../errors/asset-lake-error";
 import type { Logger } from "../logging/logger";
 import {
   validateBeforeUpload,
   validateDimensions,
-} from "../policies/validateUpload";
+} from "../policies/validate-upload";
 import type {
   AssetLakeStore,
   PolicyRecord,
   StoredAsset,
-} from "../store/AssetLakeStore";
+} from "../store/asset-lake-store";
 import { compensateAsset } from "./compensate";
-import { type IdGenerator, resolveImageIdentity } from "./imageId";
+import { type IdGenerator, resolveImageIdentity } from "./image-id";
 import { normalizeImage, toResultStatus } from "./normalize";
 
 export interface Clock {

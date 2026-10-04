@@ -8,19 +8,19 @@ import type {
   ImagePurpose,
   ResponsiveImage,
 } from "./contracts";
-import { createImageUrls } from "./delivery/imageUrls";
-import { AssetLakeError } from "./errors/AssetLakeError";
-import { createDeleteImage } from "./images/deleteImage";
-import { cryptoIdGenerator, type IdGenerator } from "./images/imageId";
+import { createImageUrls } from "./delivery/image-urls";
+import { AssetLakeError } from "./errors/asset-lake-error";
+import { createDeleteImage } from "./images/delete-image";
+import { cryptoIdGenerator, type IdGenerator } from "./images/image-id";
 import { normalizeImage, toResultStatus } from "./images/normalize";
-import { type Clock, createUploadImage } from "./images/uploadImage";
+import { type Clock, createUploadImage } from "./images/upload-image";
 import { createJsonLogger, type Logger } from "./logging/logger";
-import { createPresetResolver } from "./presets/presetResolver";
-import type { AssetLakeStore } from "./store/AssetLakeStore";
+import { createPresetResolver } from "./presets/preset-resolver";
+import type { AssetLakeStore } from "./store/asset-lake-store";
 import {
   createSanityStore,
   createSanityWriteClient,
-} from "./store/sanityStore";
+} from "./store/sanity-store";
 
 export interface AssetLakeOverrides {
   store?: AssetLakeStore;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveImageIdentity } from "./imageId";
+import { resolveImageIdentity } from "./image-id";
 
 const ids = { randomId: () => "random-uuid" };
 

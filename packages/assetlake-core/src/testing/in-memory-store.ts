@@ -9,8 +9,8 @@ import type {
   PolicyRecord,
   PresetRecord,
   StoredAsset,
-} from "../store/AssetLakeStore";
-import { readPngDimensions } from "./imageFixtures";
+} from "../store/asset-lake-store";
+import { readPngDimensions } from "./image-fixtures";
 
 type Failure = "uploadImageAsset" | "createImage" | "deleteAsset";
 

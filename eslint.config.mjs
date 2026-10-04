@@ -39,7 +39,9 @@ const eslintConfig = defineConfig([
         },
       ],
       "unicorn/prefer-node-protocol": "off",
-      "unicorn/filename-case": "off",
+      // Names that differ only in case collide on macOS's case-insensitive filesystem
+      // (broke typecheck in B04), so every source file is kebab-case.
+      "unicorn/filename-case": ["error", { case: "kebabCase" }],
       "unicorn/no-array-method-this-argument": "off",
       "unicorn/prefer-spread": "off",
       "simple-import-sort/exports": "error",
@@ -82,7 +84,7 @@ const eslintConfig = defineConfig([
     files: [
       "packages/assetlake-core/src/url.ts",
       "packages/assetlake-core/src/contracts.ts",
-      "packages/assetlake-core/src/delivery/imageUrls.ts",
+      "packages/assetlake-core/src/delivery/image-urls.ts",
     ],
     rules: {
       "no-restricted-imports": [
@@ -145,8 +147,6 @@ const eslintConfig = defineConfig([
     files: ["apps/asset-console/**/*.{ts,tsx}"],
     rules: {
       "@next/next/no-img-element": "off",
-      // Case-only name collisions break typecheck on macOS (seen in B04).
-      "unicorn/filename-case": ["error", { case: "kebabCase" }],
     },
   },
   {
@@ -169,14 +169,6 @@ const eslintConfig = defineConfig([
           ],
         },
       ],
-    },
-  },
-  {
-    // Kebab-case file names: names that differ only in case collide on macOS's case-insensitive
-    // filesystem. asset-console has its own block above; core and sanity-schema follow in B06.
-    files: ["apps/demo-web/{app,components,features,lib,tests}/**/*.{ts,tsx}"],
-    rules: {
-      "unicorn/filename-case": ["error", { case: "kebabCase" }],
     },
   },
   prettier,

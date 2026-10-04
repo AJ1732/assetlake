@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_API_VERSION, DEFAULT_DATASET } from "../project";
-import { readSeedConfig } from "./seedConfig";
+import { readSeedConfig } from "./seed-config";
 
 const TOKEN = "sk-test-not-a-real-token";
 

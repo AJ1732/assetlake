@@ -1,7 +1,7 @@
-import { assetLakeApplication } from "./types/assetLakeApplication";
-import { assetLakeImage } from "./types/assetLakeImage";
-import { assetLakePolicy } from "./types/assetLakePolicy";
-import { assetLakePreset } from "./types/assetLakePreset";
+import { assetLakeApplication } from "./types/asset-lake-application";
+import { assetLakeImage } from "./types/asset-lake-image";
+import { assetLakePolicy } from "./types/asset-lake-policy";
+import { assetLakePreset } from "./types/asset-lake-preset";
 
 export const schemaTypes = [
   assetLakeApplication,

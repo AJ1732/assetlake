@@ -1,7 +1,7 @@
 import type { DeleteImageInput } from "../contracts";
-import { AssetLakeError } from "../errors/AssetLakeError";
+import { AssetLakeError } from "../errors/asset-lake-error";
 import type { Logger } from "../logging/logger";
-import type { AssetLakeStore } from "../store/AssetLakeStore";
+import type { AssetLakeStore } from "../store/asset-lake-store";
 
 /**
  * Removes the record, then the asset only if nothing else references it. Not a revocation: CDN

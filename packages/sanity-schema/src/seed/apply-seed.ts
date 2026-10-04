@@ -1,7 +1,7 @@
 import type { SanityClient } from "@sanity/client";
 
-import type { SeedMode } from "./seedConfig.ts";
-import type { SeedDocument } from "./seedDocuments.ts";
+import type { SeedMode } from "./seed-config.ts";
+import type { SeedDocument } from "./seed-documents.ts";
 
 // "create-if-missing" is the default so rerunning the seed never reverts preset edits made live in
 // the console; "reset" restores the seeded values on purpose.

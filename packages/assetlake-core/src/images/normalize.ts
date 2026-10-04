@@ -1,5 +1,5 @@
 import type { AssetLakeImageResult } from "../contracts";
-import type { StoredAsset } from "../store/AssetLakeStore";
+import type { StoredAsset } from "../store/asset-lake-store";
 
 export function normalizeImage(
   id: string,

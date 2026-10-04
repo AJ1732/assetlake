@@ -1,5 +1,5 @@
 import type { Logger } from "../logging/logger";
-import type { AssetLakeStore } from "../store/AssetLakeStore";
+import type { AssetLakeStore } from "../store/asset-lake-store";
 
 /**
  * Best-effort removal of an asset uploaded by a failed request. Sanity dedupes identical bytes into

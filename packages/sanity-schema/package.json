@@ -14,8 +14,8 @@
     "schema:deploy": "sanity schemas deploy",
     "schema:list": "sanity schemas list",
     "typegen": "sanity schemas extract --force --enforce-required-fields && sanity typegen generate",
-    "seed": "node --env-file-if-exists=../../.env.local src/seed/runSeed.ts",
-    "seed:reset": "node --env-file-if-exists=../../.env.local src/seed/runSeed.ts --reset"
+    "seed": "node --env-file-if-exists=../../.env.local src/seed/run-seed.ts",
+    "seed:reset": "node --env-file-if-exists=../../.env.local src/seed/run-seed.ts --reset"
   },
   "dependencies": {
     "@sanity/client": "^8.9.0",

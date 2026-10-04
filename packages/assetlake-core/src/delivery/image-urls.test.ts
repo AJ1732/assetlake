@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createImageUrls, responsiveWidths } from "./imageUrls";
+import { createImageUrls, responsiveWidths } from "./image-urls";
 
 const urls = createImageUrls({
   projectId: "testproject",

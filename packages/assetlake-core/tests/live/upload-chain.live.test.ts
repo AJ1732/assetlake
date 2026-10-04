@@ -5,8 +5,8 @@ import {
 import { createClient } from "@sanity/client";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { createAssetLake } from "../../src/createAssetLake";
-import { createPngBytes } from "../../src/testing/imageFixtures";
+import { createAssetLake } from "../../src/create-asset-lake";
+import { createPngBytes } from "../../src/testing/image-fixtures";
 
 // Eval lane (handoff §21.2) against the synthetic `test` dataset, never production.
 const dataset = process.env.SANITY_TEST_DATASET ?? "test";

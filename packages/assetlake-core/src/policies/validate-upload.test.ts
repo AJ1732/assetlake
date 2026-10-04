@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import type { StoredAsset } from "../store/AssetLakeStore";
-import { createPngBytes, signatureBytes } from "../testing/imageFixtures";
+import type { StoredAsset } from "../store/asset-lake-store";
+import { createPngBytes, signatureBytes } from "../testing/image-fixtures";
 import { basePolicy } from "../testing/scenario";
-import { validateBeforeUpload, validateDimensions } from "./validateUpload";
+import { validateBeforeUpload, validateDimensions } from "./validate-upload";
 
 const png = createPngBytes(4, 4);
 

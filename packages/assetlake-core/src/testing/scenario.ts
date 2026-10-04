@@ -1,8 +1,8 @@
-import { createAssetLake } from "../createAssetLake";
+import { createAssetLake } from "../create-asset-lake";
 import type { LogEvent, Logger, LogLevel } from "../logging/logger";
-import type { PolicyRecord, PresetRecord } from "../store/AssetLakeStore";
+import type { PolicyRecord, PresetRecord } from "../store/asset-lake-store";
 import { createManualClock } from "../testing";
-import { InMemoryStore } from "./inMemoryStore";
+import { InMemoryStore } from "./in-memory-store";
 
 export const TEST_TOKEN = "sk-test-write-token-must-never-leak";
 export const APPLICATION_ID = "assetlake-application-campus-demo";

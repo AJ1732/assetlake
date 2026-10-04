@@ -2,9 +2,9 @@
 import { createClient } from "@sanity/client";
 
 import { SANITY_PROJECT_ID } from "../project.ts";
-import { applySeed } from "./applySeed.ts";
-import { readSeedConfig } from "./seedConfig.ts";
-import { seedDocuments } from "./seedDocuments.ts";
+import { applySeed } from "./apply-seed.ts";
+import { readSeedConfig } from "./seed-config.ts";
+import { seedDocuments } from "./seed-documents.ts";
 
 const seedConfig = readSeedConfig(process.env, process.argv.slice(2));
 

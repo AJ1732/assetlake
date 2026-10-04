@@ -7,7 +7,7 @@ import {
   IMAGE_FIT_MODES,
   PRESET_QUALITY_RANGE,
 } from "../constants";
-import { positiveInteger } from "./fieldRules";
+import { positiveInteger } from "./field-rules";
 
 // Declarative delivery rule; @assetlake/core maps it onto @sanity/image-url. Width/height must be
 // integers: the image pipeline warns non-integer values can time out.

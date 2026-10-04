@@ -6,7 +6,7 @@ import {
   PRESET_QUALITY_RANGE,
   TRANSFORMABLE_IMAGE_MIME_TYPES,
 } from "../constants";
-import { SEED_IDS, type SeedDocument, seedDocuments } from "./seedDocuments";
+import { SEED_IDS, type SeedDocument, seedDocuments } from "./seed-documents";
 
 const documents = seedDocuments();
 const ofType = (type: string) =>

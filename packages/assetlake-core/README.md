@@ -75,7 +75,7 @@ Ids are `assetlake-image-<uuid>` or `assetlake-image-<sha256(actor:key)>`, never
 
 ## Boundary
 
-No `next`, React, Express, or UI imports (ESLint `no-restricted-imports` + `src/dependencyBoundary.test.ts`). `@assetlake/core/url` additionally cannot reach `@sanity/client`, `node:*`, or the write path (`src/urlBoundary.test.ts`).
+No `next`, React, Express, or UI imports (ESLint `no-restricted-imports` + `src/dependency-boundary.test.ts`). `@assetlake/core/url` additionally cannot reach `@sanity/client`, `node:*`, or the write path (`src/url-boundary.test.ts`).
 
 ## Tests
 

@@ -1,7 +1,7 @@
 import { fileTypeFromBuffer } from "file-type";
 
-import { AssetLakeError } from "../errors/AssetLakeError";
-import type { PolicyRecord, StoredAsset } from "../store/AssetLakeStore";
+import { AssetLakeError } from "../errors/asset-lake-error";
+import type { PolicyRecord, StoredAsset } from "../store/asset-lake-store";
 
 interface UploadCandidate {
   body: Uint8Array;

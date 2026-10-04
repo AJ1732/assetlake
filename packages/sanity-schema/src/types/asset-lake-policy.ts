@@ -7,7 +7,7 @@ import {
 } from "@sanity/types";
 
 import { DOCUMENT_TYPES, TRANSFORMABLE_IMAGE_MIME_TYPES } from "../constants";
-import { positiveInteger } from "./fieldRules";
+import { positiveInteger } from "./field-rules";
 
 const notBelowMinimum =
   (minField: "minWidth" | "minHeight") =>

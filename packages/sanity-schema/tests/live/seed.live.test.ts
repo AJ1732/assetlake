@@ -2,9 +2,9 @@ import { createClient } from "@sanity/client";
 import { describe, expect, it } from "vitest";
 
 import { SANITY_PROJECT_ID } from "../../src/project";
-import { applySeed } from "../../src/seed/applySeed";
-import { readSeedConfig } from "../../src/seed/seedConfig";
-import { seedDocuments } from "../../src/seed/seedDocuments";
+import { applySeed } from "../../src/seed/apply-seed";
+import { readSeedConfig } from "../../src/seed/seed-config";
+import { seedDocuments } from "../../src/seed/seed-documents";
 
 // Eval lane: runs against SANITY_TEST_DATASET (default "test"), never production.
 const seedConfig = readSeedConfig(

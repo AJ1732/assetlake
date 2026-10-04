@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { UploadImageInput } from "../contracts";
-import { createPngBytes, signatureBytes } from "../testing/imageFixtures";
+import { createPngBytes, signatureBytes } from "../testing/image-fixtures";
 import {
   APPLICATION_ID,
   createScenario,

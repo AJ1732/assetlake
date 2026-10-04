@@ -6,12 +6,12 @@ import {
 } from "@sanity/client";
 
 import type { AssetLakeConfig } from "../client/config";
-import { hasStatusCode } from "../errors/AssetLakeError";
+import { hasStatusCode } from "../errors/asset-lake-error";
 import type {
   AssetLakeStore,
   NewImageRecord,
   StoredAsset,
-} from "./AssetLakeStore";
+} from "./asset-lake-store";
 import {
   APPLICATION_BY_ID_QUERY,
   COUNT_IMAGES_FOR_ENTITY_QUERY,

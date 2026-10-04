@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createPngBytes } from "../testing/imageFixtures";
+import { createPngBytes } from "../testing/image-fixtures";
 import { APPLICATION_ID, createScenario } from "../testing/scenario";
 
 const owner = { type: "user", id: "user-demo-001" };

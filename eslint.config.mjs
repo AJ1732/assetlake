@@ -109,6 +109,41 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // demo-web code that can reach a browser bundle must not import the write path. Server-only
+    // loaders opt out with the *.server.ts suffix (and `import "server-only"`).
+    files: ["apps/demo-web/{components,features,lib/public}/**/*.{ts,tsx}"],
+    ignores: ["**/*.server.{ts,tsx}", "**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@assetlake/core",
+              message:
+                "Holds the write token. Use @assetlake/core/url or @assetlake/core/contracts in client code.",
+            },
+          ],
+          patterns: [
+            {
+              group: ["@/lib/server/*", "**/lib/server/*"],
+              message:
+                "lib/server is server-only. Load data in a *.server.ts module or a Server Component.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Kebab-case file names: names that differ only in case collide on macOS's case-insensitive
+    // filesystem. Scoped to demo-web until B06 renames core, sanity-schema, and asset-console.
+    files: ["apps/demo-web/{app,components,features,lib,tests}/**/*.{ts,tsx}"],
+    rules: {
+      "unicorn/filename-case": ["error", { case: "kebabCase" }],
+    },
+  },
   prettier,
   // Override default ignores of eslint-config-next.
   globalIgnores([

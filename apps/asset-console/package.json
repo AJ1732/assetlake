@@ -1,0 +1,32 @@
+{
+  "name": "@assetlake/asset-console",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "scripts": {
+    "dev": "sanity dev",
+    "build": "sanity build",
+    "deploy": "sanity deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@assetlake/core": "workspace:*",
+    "@assetlake/sanity-schema": "workspace:*",
+    "@sanity/sdk": "^3.7.0",
+    "@sanity/sdk-react": "^3.7.0",
+    "@sanity/ui": "^4.3.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-error-boundary": "^6",
+    "styled-components": "^6.5.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "@types/react": "^19",
+    "sanity": "^6.17.0",
+    "typescript": "^5",
+    "vitest": "^5.0.3"
+  }
+}

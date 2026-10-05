@@ -64,10 +64,12 @@ The demo adds a passcode session (HMAC-signed `HttpOnly` cookie), 5 uploads per 
 | Path                      | Package                    | Role                                                                                                                 |
 | ------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `packages/assetlake-core` | `@assetlake/core`          | The SDK on npm: framework-neutral upload, policy, presets, setup, URLs ([README](packages/assetlake-core/README.md)) |
-| `packages/assetlake-cli`  | `@assetlake/cli`           | `assetlake init / upload / url / doctor` for your own project ([README](packages/assetlake-cli/README.md))           |
+| `packages/assetlake-cli`  | `@assetlake/cli`           | `assetlake init / upload / url / delete / doctor` for your own project ([README](packages/assetlake-cli/README.md))  |
 | `packages/sanity-schema`  | `@assetlake/sanity-schema` | Content model, schema deploy, TypeGen (constants come from core)                                                     |
 | `apps/demo-web`           | `@assetlake/demo-web`      | Next.js 16 demo: Route Handler upload boundary, playground, live feed, docs ([README](apps/demo-web/README.md))      |
 | `apps/asset-console`      | `@assetlake/asset-console` | Sanity App SDK operations console ([README](apps/asset-console/README.md))                                           |
+| `examples/express`        | (not in the workspace)     | Minimal Express 5 server on the npm package ([README](examples/express/README.md))                                   |
+| `examples/nextjs`         | (not in the workspace)     | Minimal Next.js 16 app on the npm package ([README](examples/nextjs/README.md))                                      |
 
 Stack: Node 24, pnpm workspaces, TypeScript, Next.js 16 (App Router), React 19, `@sanity/client` 8, Sanity App SDK 3, Vitest, Playwright. demo-web runs on Railway (`.railway/railway.ts`); the console is deployed with `sanity deploy`.
 
@@ -90,6 +92,7 @@ ln -s ../../.env.local apps/demo-web/.env.local
 pnpm build
 SANITY_DATASET=test pnpm test:live                 # eval lane against a real dataset
 pnpm test:pack                                     # pack lane: npm-installed tarballs, plain node
+pnpm test:examples                                 # boots examples/* on the packed tarball, uploads to `test`
 pnpm seed                                          # demo setup documents (create-if-missing)
 ASSETLAKE_DEMO_PASSCODE=... pnpm test:e2e          # Playwright; stop pnpm dev first
 pnpm dev                                           # http://localhost:3000
@@ -103,6 +106,7 @@ To point these at your own project rather than the demo's, see "Use AssetLake wi
 - **Gate lane** (`pnpm test`, runs in pre-commit): about 420 Vitest tests over core, the schema, demo-web's HTTP and session layer, the console and the secret scanner. It uses in-memory fakes and generated images, with no network and no binary fixtures.
 - **Live lane** (`pnpm test:live`): runs against the `test` dataset. It covers the full upload chain (upload, record, transform, CDN fetch, idempotent replay, delete), the bring-your-own-project setup, and the CLI end to end (`init` twice, `doctor`, `upload`, `url`).
 - **Pack lane** (`pnpm test:pack`): packs `@assetlake/core` and `@assetlake/cli` the way `pnpm publish` does, installs the tarballs with npm in an empty project, imports every core subpath with plain `node`, runs the `assetlake` bin, and secret-scans the tarballs.
+- **Example lane** (`pnpm test:examples`): copies `examples/express` and `examples/nextjs`, installs each with npm and the packed core tarball, typechecks or builds it, starts it, then uploads, builds preset URLs, uploads from a URL and deletes through its HTTP routes against `test`.
 - **E2E** (`pnpm test:e2e`): Playwright. The UI lane writes to `production` (what `/live` shows) and the API lane writes to `test`. It checks that every image request goes to `cdn.sanity.io`, and that uploads appear on `/live` without a reload, including when `/live` is opened after the upload. Every test upload is deleted afterwards.
 - **Secret scan** (`scripts/scan-secrets.sh`): checks the repo and the browser-served build output for the token values and token-shaped strings. It prints file paths only.
 
@@ -190,6 +194,10 @@ const image = await assetLake.images.upload({
 const avatarUrl = await assetLake.images.url(image.id, { preset: "avatar" });
 ```
 
-Any server works the same way: Express, Fastify, Next.js Route Handlers, workers, scripts. Browsers build variant URLs with `@assetlake/core/url` and never need the token. Or upload from a terminal: `npx @assetlake/cli upload ./photo.png --app assetlake-application-my-app --preset avatar`. See the [core](packages/assetlake-core/README.md) and [CLI](packages/assetlake-cli/README.md) READMEs for the full API.
+Any server works the same way: Express, Fastify, Next.js Route Handlers, workers, scripts. Browsers build variant URLs with `@assetlake/core/url` and never need the token. Two complete, tested starting points: [`examples/express`](examples/express/README.md) and [`examples/nextjs`](examples/nextjs/README.md). Or upload from a terminal: `npx @assetlake/cli upload ./photo.png --app assetlake-application-my-app --preset avatar`. See the [core](packages/assetlake-core/README.md) and [CLI](packages/assetlake-cli/README.md) READMEs for the full API.
 
 The live lane runs this path against a real dataset (`packages/assetlake-core/tests/live/byo-project.live.test.ts` and `packages/assetlake-cli/tests/live/cli.live.test.ts`), and the pack lane installs the packed tarballs in an empty project.
+
+### 4. Large files: upload from a URL
+
+Sanity has no presigned uploads (every Assets API call needs a token), so browsers can't upload to Sanity directly. To keep large files off your server, upload them to your own bucket with a presigned PUT, then pass a presigned GET URL to `assetLake.images.uploadFromUrl`. Sanity fetches the file itself. It is off until you list your bucket's host in `remoteUploads.allowedHosts`, and its policy checks run after the fetch, so a rejected file is briefly public before AssetLake deletes it. Details in the [core README](packages/assetlake-core/README.md#upload-from-a-url-large-files).

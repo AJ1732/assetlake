@@ -1,6 +1,6 @@
 {
   "name": "@assetlake/core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Policy-checked image uploads to your own Sanity Content Lake, with named presets served from cdn.sanity.io.",
   "license": "MIT",
   "repository": {

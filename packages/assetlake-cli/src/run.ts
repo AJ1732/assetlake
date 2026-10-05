@@ -3,9 +3,10 @@ import { parseArgs, type ParseArgsOptionsConfig } from "node:util";
 import { isAssetLakeError } from "@assetlake/core";
 
 import { describeError, UsageError } from "./cli-errors";
+import { deleteImage } from "./commands/delete";
 import { doctor } from "./commands/doctor";
 import { init } from "./commands/init";
-import { upload } from "./commands/upload";
+import { isRemoteSource, upload } from "./commands/upload";
 import { url } from "./commands/url";
 import {
   type CliEnvironment,
@@ -24,8 +25,9 @@ export const USAGE = `Usage: assetlake <command> [options]
 
 Commands:
   init              Create the upload policy, presets and application in your dataset
-  upload <file>     Upload an image; prints its record and CDN URL
+  upload <source>   Upload an image file, or an https URL that Sanity fetches itself
   url <imageId>     Print an image's CDN URL for a preset
+  delete <imageId>  Delete an image the CLI (or the --entity-* owner) uploaded
   doctor            Check the token, dataset visibility, setup documents and CORS
 
 Target (all commands):
@@ -37,6 +39,7 @@ upload    --app <applicationId> (required)  --purpose <purpose> (default content
           --entity-type <type> --entity-id <id>  --alt <text>  --tag <tag> (repeatable)
           --preset <slug>
 url       --preset <slug> (required)
+delete    --entity-type <type> --entity-id <id> (default: the CLI's own uploads)
 doctor    --slug <slug> (default my-app)
 
 Token: set ASSETLAKE_TOKEN (or SANITY_AUTH_TOKEN) to a token with the Editor role.
@@ -86,6 +89,13 @@ function required(values: FlagValues, name: string): string {
   return value;
 }
 
+// The operator named this URL, so its host is the one host the upload may fetch from.
+function remoteHostsFor(source: string): string[] {
+  return isRemoteSource(source) && URL.canParse(source)
+    ? [new URL(source).hostname]
+    : [];
+}
+
 const COMMANDS: Record<string, CommandSpec> = {
   init: {
     flags: {
@@ -116,15 +126,17 @@ const COMMANDS: Record<string, CommandSpec> = {
       tag: { type: "string", multiple: true },
       preset: { type: "string" },
     },
-    positionals: ["file"],
-    execute: ({ target, values, positionals: [file], runtime }) =>
+    positionals: ["source"],
+    execute: ({ target, values, positionals: [source], runtime }) =>
       upload(
         {
-          assetLake: runtime.createAssetLake(target),
+          assetLake: runtime.createAssetLake(target, {
+            remoteHosts: remoteHostsFor(source),
+          }),
           readFile: runtime.readFile,
         },
         {
-          file,
+          source,
           applicationId: required(values, "app"),
           purpose: required(values, "purpose"),
           entityType: text(values, "entity-type"),
@@ -142,6 +154,22 @@ const COMMANDS: Record<string, CommandSpec> = {
       url(
         { assetLake: runtime.createAssetLake(target) },
         { imageId, preset: required(values, "preset") },
+      ),
+  },
+  delete: {
+    flags: {
+      "entity-type": { type: "string" },
+      "entity-id": { type: "string" },
+    },
+    positionals: ["imageId"],
+    execute: ({ target, values, positionals: [imageId], runtime }) =>
+      deleteImage(
+        { assetLake: runtime.createAssetLake(target) },
+        {
+          imageId,
+          entityType: text(values, "entity-type"),
+          entityId: text(values, "entity-id"),
+        },
       ),
   },
   doctor: {

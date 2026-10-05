@@ -13,6 +13,7 @@ import { AssetLakeError } from "./errors/asset-lake-error";
 import { createDeleteImage } from "./images/delete-image";
 import { cryptoIdGenerator, type IdGenerator } from "./images/image-id";
 import { normalizeImage, toResultStatus } from "./images/normalize";
+import { createUploadImageFromUrl } from "./images/upload-from-url";
 import { type Clock, createUploadImage } from "./images/upload-image";
 import { createJsonLogger, type Logger } from "./logging/logger";
 import { createPresetResolver } from "./presets/preset-resolver";
@@ -56,6 +57,8 @@ export function createAssetLake(
     dataset: config.dataset,
   });
 
+  const uploadDependencies = { store, logger, clock, ids };
+
   async function requireImage(id: string) {
     const image = await store.findImage(id);
     if (!image)
@@ -68,7 +71,11 @@ export function createAssetLake(
 
   return {
     images: {
-      upload: createUploadImage({ store, logger, clock, ids }),
+      upload: createUploadImage(uploadDependencies),
+      uploadFromUrl: createUploadImageFromUrl(
+        uploadDependencies,
+        config.remoteUploads?.allowedHosts ?? [],
+      ),
       delete: createDeleteImage({ store, logger }),
 
       async findLatestForEntity(query: {

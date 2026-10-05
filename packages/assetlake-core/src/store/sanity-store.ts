@@ -28,6 +28,9 @@ import { toSetupDocuments } from "./setup-documents";
 import { type SetupStore, toSetupResult } from "./setup-store";
 
 const CONFLICT = 409;
+// Sanity allows a from-url fetch up to 300s, which is also the client's default timeout, so the
+// request would be cut off just as Sanity finishes.
+const FROM_URL_TIMEOUT_MS = 330_000;
 
 export function createSanityWriteClient(config: AssetLakeConfig): SanityClient {
   return createClient({
@@ -115,6 +118,18 @@ export function createSanityStore(
         { filename, contentType },
       );
       return toStoredAsset(asset);
+    },
+
+    async uploadImageAssetFromUrl(url, { filename }) {
+      const { document } = await client.request<{
+        document: SanityImageAssetDocument;
+      }>({
+        method: "POST",
+        url: `/assets/images/${client.config().dataset}/from-url`,
+        body: filename ? { url, filename } : { url },
+        timeout: FROM_URL_TIMEOUT_MS,
+      });
+      return toStoredAsset(document);
     },
 
     async createImage(record) {

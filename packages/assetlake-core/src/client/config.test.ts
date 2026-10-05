@@ -28,6 +28,28 @@ describe("parseAssetLakeConfig", () => {
     );
   });
 
+  it("accepts allowed hosts for URL uploads", () => {
+    const remoteUploads = {
+      allowedHosts: ["uploads.example.com", "*.r2.cloudflarestorage.com"],
+    };
+
+    expect(parseAssetLakeConfig({ ...valid, remoteUploads })).toMatchObject({
+      remoteUploads,
+    });
+  });
+
+  it.each(["https://uploads.example.com", "*", "localhost", "*.com/path"])(
+    "rejects the allowed-host pattern %j",
+    (pattern) => {
+      expect(() =>
+        parseAssetLakeConfig({
+          ...valid,
+          remoteUploads: { allowedHosts: [pattern] },
+        }),
+      ).toThrow("remoteUploads.allowedHosts.0");
+    },
+  );
+
   it("never echoes the token in the error", () => {
     expect(() => parseAssetLakeConfig({ ...valid, dataset: "Bad" })).toThrow(
       expect.objectContaining({

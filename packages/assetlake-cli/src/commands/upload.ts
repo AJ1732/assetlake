@@ -2,7 +2,7 @@ import { basename } from "node:path";
 
 import {
   type AssetLake,
-  type EntityRef,
+  type AssetLakeImageResult,
   IMAGE_PURPOSES,
   type ImagePurpose,
 } from "@assetlake/core";
@@ -10,9 +10,11 @@ import { fileTypeFromBuffer } from "file-type";
 
 import { UsageError } from "../cli-errors";
 import type { CommandResult } from "../output";
+import { toEntity } from "./entity";
 
 export interface UploadOptions {
-  file: string;
+  /** A local path, or an https URL that Sanity fetches itself. */
+  source: string;
   applicationId: string;
   purpose: string;
   entityType?: string;
@@ -27,7 +29,7 @@ export interface UploadDependencies {
   readFile(path: string): Promise<Uint8Array>;
 }
 
-const CLI_ACTOR = "assetlake-cli";
+export const isRemoteSource = (source: string) => /^https?:\/\//i.test(source);
 
 function toPurpose(value: string): ImagePurpose {
   if (!(IMAGE_PURPOSES as readonly string[]).includes(value)) {
@@ -36,15 +38,6 @@ function toPurpose(value: string): ImagePurpose {
     );
   }
   return value as ImagePurpose;
-}
-
-function toEntity(options: UploadOptions): EntityRef | undefined {
-  const { entityType, entityId } = options;
-  if (!entityType && !entityId) return undefined;
-  if (!entityType || !entityId) {
-    throw new UsageError("Pass --entity-type and --entity-id together.");
-  }
-  return { type: entityType, id: entityId };
 }
 
 // The declared type comes from the bytes, never the extension. Non-images stop here, before any
@@ -62,29 +55,46 @@ async function detectImageType(
   return detected.mime;
 }
 
+function filenameFromUrl(url: string): string | undefined {
+  const last = new URL(url).pathname.split("/").pop();
+  return last ? decodeURIComponent(last) : undefined;
+}
+
 export async function upload(
   deps: UploadDependencies,
   options: UploadOptions,
 ): Promise<CommandResult> {
-  const purpose = toPurpose(options.purpose);
   const entity = toEntity(options);
-  const filename = basename(options.file);
-  const body = await deps.readFile(options.file);
-  const contentType = await detectImageType(body, filename);
-
-  const image = await deps.assetLake.images.upload({
-    body,
-    filename,
-    contentType,
+  const common = {
     applicationId: options.applicationId,
-    purpose,
+    purpose: toPurpose(options.purpose),
     entity,
     alt: options.alt,
     tags: options.tags,
-    actorId: entity?.id ?? CLI_ACTOR,
-  });
-  if (!options.preset) return { exitCode: 0, output: image };
+    actorId: entity.id,
+  };
 
+  let image: AssetLakeImageResult;
+  if (isRemoteSource(options.source)) {
+    if (!/^https:\/\//i.test(options.source) || !URL.canParse(options.source))
+      throw new UsageError("Only https URLs can be uploaded from the web.");
+    image = await deps.assetLake.images.uploadFromUrl({
+      ...common,
+      url: options.source,
+      filename: filenameFromUrl(options.source),
+    });
+  } else {
+    const filename = basename(options.source);
+    const body = await deps.readFile(options.source);
+    image = await deps.assetLake.images.upload({
+      ...common,
+      body,
+      filename,
+      contentType: await detectImageType(body, filename),
+    });
+  }
+
+  if (!options.preset) return { exitCode: 0, output: image };
   const presetUrl = await deps.assetLake.images.url(image.id, {
     preset: options.preset,
   });

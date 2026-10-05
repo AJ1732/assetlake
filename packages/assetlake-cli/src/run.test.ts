@@ -26,10 +26,12 @@ function createHarness(
 ) {
   const store = new InMemoryStore();
   const targets: CliTarget[] = [];
+  const remoteHosts: string[][] = [];
   const runtime: CliRuntime = {
-    createAssetLake: (target) => {
+    createAssetLake: (target, options) => {
       targets.push(target);
-      return createTestLake(store).assetLake;
+      remoteHosts.push(options?.remoteHosts ?? []);
+      return createTestLake(store, options?.remoteHosts).assetLake;
     },
     createProbes: () => probes,
     readFile: async (path) => {
@@ -46,7 +48,7 @@ function createHarness(
     const exitCode = await run(argv, environment, io, runtime);
     return { exitCode, ...written };
   };
-  return { store, targets, invoke };
+  return { store, targets, remoteHosts, invoke };
 }
 
 describe("run", () => {
@@ -140,6 +142,30 @@ describe("run", () => {
       "testproject",
       "testproject",
     ]);
+  });
+
+  it("uploads from a URL allowing only that URL's host, then deletes it", async () => {
+    const { invoke, store, remoteHosts } = createHarness();
+    await invoke(["init"]);
+    const source = "https://uploads.example.com/a.png";
+    store.serveRemote(source, createPngBytes(40, 30));
+
+    const uploaded = await invoke([
+      "upload",
+      source,
+      "--app",
+      "assetlake-application-my-app",
+    ]);
+    expect(uploaded.exitCode, uploaded.stderr).toBe(0);
+    expect(remoteHosts.at(-1)).toEqual(["uploads.example.com"]);
+
+    const { id } = JSON.parse(uploaded.stdout) as { id: string };
+    const deleted = await invoke(["delete", id]);
+    expect(JSON.parse(deleted.stdout)).toEqual({
+      event: "IMAGE_DELETED",
+      imageId: id,
+    });
+    expect(store.images.size).toBe(0);
   });
 
   it("lets --project and --dataset override the environment", async () => {

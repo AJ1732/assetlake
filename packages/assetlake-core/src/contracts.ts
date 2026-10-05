@@ -24,6 +24,16 @@ export interface UploadImageInput {
   actorId: string;
 }
 
+// Sanity fetches the URL itself (Assets API from-url), so the bytes never pass through the caller.
+// Only hosts listed in config.remoteUploads.allowedHosts are accepted.
+export interface UploadImageFromUrlInput extends Omit<
+  UploadImageInput,
+  "body" | "filename" | "contentType"
+> {
+  url: string;
+  filename?: string;
+}
+
 export interface AssetLakeImageResult {
   id: string;
   assetId: string;
@@ -73,7 +83,9 @@ export type AssetLakeErrorCode =
   | "IMAGE_NOT_FOUND"
   | "FORBIDDEN"
   | "UPLOAD_FAILED"
-  | "METADATA_CREATE_FAILED";
+  | "METADATA_CREATE_FAILED"
+  | "SOURCE_URL_NOT_ALLOWED"
+  | "SOURCE_FETCH_FAILED";
 
 // HTTP envelope: produced by demo-web route handlers (B03), consumed by the demo UI (B04).
 export type ApiErrorCode =

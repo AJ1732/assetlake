@@ -1,3 +1,4 @@
+import type { AssetLakeConfigInput } from "../client/config";
 import { createAssetLake } from "../create-asset-lake";
 import type { LogEvent, Logger, LogLevel } from "../logging/logger";
 import type { PolicyRecord, PresetRecord } from "../store/asset-lake-store";
@@ -46,6 +47,7 @@ export function createRecordingLogger() {
 export function createScenario(
   policy: Partial<PolicyRecord> = {},
   presets: PresetRecord[] = [avatarPreset],
+  config: Partial<AssetLakeConfigInput> = {},
 ) {
   const store = new InMemoryStore({
     applications: [
@@ -63,6 +65,7 @@ export function createScenario(
       dataset: "test",
       apiVersion: "2026-10-04",
       token: TEST_TOKEN,
+      ...config,
     },
     {
       store,

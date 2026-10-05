@@ -20,6 +20,9 @@ export const HTTP_STATUS: Record<ApiErrorCode, number> = {
   PRESET_INVALID: 500,
   UPLOAD_FAILED: 500,
   METADATA_CREATE_FAILED: 500,
+  // URL uploads (core 0.3.0). demo-web doesn't call them; the Record still needs every code.
+  SOURCE_URL_NOT_ALLOWED: 400,
+  SOURCE_FETCH_FAILED: 502,
 };
 
 export const GENERIC_SERVER_MESSAGE = "Something went wrong. Please try again.";

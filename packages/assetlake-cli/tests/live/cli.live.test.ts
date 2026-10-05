@@ -51,6 +51,8 @@ afterAll(async () => {
 describe(`assetlake CLI against "${dataset}"`, () => {
   let applicationId = "";
   let imageId = "";
+  let imageUrl = "";
+  let remoteImageId = "";
 
   it("init creates the application; a second init creates nothing", async () => {
     const first = await cli("init", "--slug", slug);
@@ -96,6 +98,7 @@ describe(`assetlake CLI against "${dataset}"`, () => {
     expect(result.exitCode, result.stderr).toBe(0);
     const image = result.json();
     imageId = image.id;
+    imageUrl = image.url;
     cleanup.push(image.assetId, image.id);
 
     expect(image).toMatchObject({ status: "ready", mimeType: "image/png" });
@@ -112,6 +115,29 @@ describe(`assetlake CLI against "${dataset}"`, () => {
 
     expect(result.exitCode, result.stderr).toBe(0);
     expect(result.json().url).toMatch(/w=640&h=360/);
+  });
+
+  it("upload with an https URL has Sanity fetch it", async () => {
+    const result = await cli(
+      "upload",
+      `${imageUrl}?w=250`,
+      "--app",
+      applicationId,
+    );
+    expect(result.exitCode, result.stderr).toBe(0);
+    const image = result.json();
+    remoteImageId = image.id;
+    cleanup.push(image.assetId, image.id);
+
+    expect(image).toMatchObject({ status: "ready", width: 250 });
+  });
+
+  it("delete removes both uploads", async () => {
+    for (const id of [remoteImageId, imageId]) {
+      const result = await cli("delete", id);
+      expect(result.exitCode, result.stderr).toBe(0);
+      await expect(sanity.getDocument(id)).resolves.toBeUndefined();
+    }
   });
 
   // Step 0 finding 4: the docs don't say whether a dry run checks permissions. If a tokenless dry

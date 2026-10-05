@@ -7,7 +7,7 @@ import {
   toFailureResponse,
 } from "@/lib/server/http-errors";
 
-// The B03 spec status table, plus PRESET_INVALID (added to core after the table was written).
+// The B03 spec status table, plus PRESET_INVALID and the URL-upload codes (added to core later).
 const SPEC_STATUS: Record<string, number> = {
   UNAUTHENTICATED: 401,
   BAD_REQUEST: 400,
@@ -24,6 +24,8 @@ const SPEC_STATUS: Record<string, number> = {
   PRESET_INVALID: 500,
   UPLOAD_FAILED: 500,
   METADATA_CREATE_FAILED: 500,
+  SOURCE_URL_NOT_ALLOWED: 400,
+  SOURCE_FETCH_FAILED: 502,
 };
 
 describe("HTTP status map", () => {
@@ -47,11 +49,11 @@ describe("HTTP status map", () => {
 
   it.each(Object.entries(SPEC_STATUS).filter(([, status]) => status >= 500))(
     "%s replaces core's message with a generic one",
-    async (code) => {
+    async (code, status) => {
       const response = toFailureResponse(
         new AssetLakeError(code as AssetLakeErrorCode, "dataset internals"),
       );
-      expect(response.status).toBe(500);
+      expect(response.status).toBe(status);
       expect((await response.json()).error).toEqual({
         code,
         message: GENERIC_SERVER_MESSAGE,

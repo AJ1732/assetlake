@@ -1,6 +1,6 @@
 {
   "name": "@assetlake/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Set up, upload to and check AssetLake in your own Sanity project from the terminal.",
   "license": "MIT",
   "repository": {

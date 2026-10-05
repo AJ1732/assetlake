@@ -97,6 +97,11 @@ export interface AssetLakeStore {
     body: Uint8Array,
     options: UploadAssetOptions,
   ): Promise<StoredAsset>;
+  /** Sanity fetches the URL (Assets API from-url). Rejects with the upstream statusCode. */
+  uploadImageAssetFromUrl(
+    url: string,
+    options: { filename?: string },
+  ): Promise<StoredAsset>;
   /** "exists" when a document with record.id is already present (idempotent replay race). */
   createImage(record: NewImageRecord): Promise<"created" | "exists">;
   deleteImage(id: string): Promise<void>;

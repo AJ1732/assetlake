@@ -16,25 +16,32 @@ export async function validateBeforeUpload(
   policy: PolicyRecord,
   candidate: UploadCandidate,
 ): Promise<void> {
-  if (!policy.allowedMimeTypes.includes(candidate.contentType)) {
-    throw new AssetLakeError(
-      "UNSUPPORTED_IMAGE_TYPE",
-      `Only ${policy.allowedMimeTypes.join(", ")} images are accepted.`,
-    );
-  }
-
-  if (candidate.body.byteLength > policy.maxFileSizeBytes) {
-    throw new AssetLakeError(
-      "FILE_TOO_LARGE",
-      `Images must be ${policy.maxFileSizeBytes} bytes or smaller.`,
-    );
-  }
+  checkTypeAndSize(policy, candidate.contentType, candidate.body.byteLength);
 
   const detected = await fileTypeFromBuffer(candidate.body);
   if (detected?.mime !== candidate.contentType) {
     throw new AssetLakeError(
       "SIGNATURE_MISMATCH",
       "The file contents do not match the declared image type.",
+    );
+  }
+}
+
+function checkTypeAndSize(
+  policy: PolicyRecord,
+  mimeType: string,
+  size: number,
+): void {
+  if (!policy.allowedMimeTypes.includes(mimeType)) {
+    throw new AssetLakeError(
+      "UNSUPPORTED_IMAGE_TYPE",
+      `Only ${policy.allowedMimeTypes.join(", ")} images are accepted.`,
+    );
+  }
+  if (size > policy.maxFileSizeBytes) {
+    throw new AssetLakeError(
+      "FILE_TOO_LARGE",
+      `Images must be ${policy.maxFileSizeBytes} bytes or smaller.`,
     );
   }
 }
@@ -88,4 +95,16 @@ export function validateDimensions(
       `Image ${violated.label} ${violated.limit}px is required.`,
     );
   }
+}
+
+/**
+ * URL uploads: Sanity fetched and decoded the file, so its own analysis (type, size, dimensions) is
+ * checked against the policy after the fact. A failure here is followed by a compensating delete.
+ */
+export function validateAfterRemoteUpload(
+  policy: PolicyRecord,
+  asset: StoredAsset,
+): void {
+  checkTypeAndSize(policy, asset.mimeType, asset.size);
+  validateDimensions(policy, asset);
 }

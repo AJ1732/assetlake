@@ -24,12 +24,13 @@ Node 24 or later. Install it globally (`npm i -g @assetlake/cli`) to get a plain
 
 Every command accepts `--project <id>` and `--dataset <name>`, which override the environment. Output is one JSON document on stdout (pipe it to `jq`); diagnostics and core's structured logs go to stderr.
 
-| Command         | Does                                                                                                                                                    |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `init`          | Creates the upload policy, presets and application. Prints `{"event":"INIT_COMPLETED","created":[...],"existing":[...]}`. A second run creates nothing. |
-| `upload <file>` | Detects the type from the file's bytes, refuses non-images before any request, uploads through the application's policy, prints the normalized record.  |
-| `url <imageId>` | Prints the CDN URL for an image under a preset.                                                                                                         |
-| `doctor`        | Checks the token, write access (a dry run, nothing written), dataset visibility, the setup documents and CORS origins. Exits 1 if any check fails.      |
+| Command            | Does                                                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `init`             | Creates the upload policy, presets and application. Prints `{"event":"INIT_COMPLETED","created":[...],"existing":[...]}`. A second run creates nothing. |
+| `upload <source>`  | A file: detects the type from its bytes and refuses non-images before any request. An `https://` URL: Sanity fetches it. Prints the normalized record.  |
+| `url <imageId>`    | Prints the CDN URL for an image under a preset.                                                                                                         |
+| `delete <imageId>` | Deletes an image the CLI uploaded (or one owned by the `--entity-*` you name), then its asset if nothing else uses it.                                  |
+| `doctor`           | Checks the token, write access (a dry run, nothing written), dataset visibility, the setup documents and CORS origins. Exits 1 if any check fails.      |
 
 ### init
 
@@ -44,11 +45,23 @@ Creates `assetlake-policy-public-images` (JPEG, PNG, WebP up to 5 MB), the prese
 ### upload
 
 ```bash
-assetlake upload <file> --app <applicationId> [--purpose content] [--preset avatar]
+assetlake upload <file|https-url> --app <applicationId> [--purpose content] [--preset avatar]
                  [--entity-type user --entity-id u_123] [--alt "..."] [--tag a --tag b]
 ```
 
-`--app` takes the application id that `init` prints. `--purpose` is one of `avatar`, `cover`, `thumbnail`, `project`, `content`, `other`. With `--preset`, the output adds `presetUrl`.
+- `--app` takes the application id that `init` prints.
+- `--purpose` is one of `avatar`, `cover`, `thumbnail`, `project`, `content`, `other`.
+- With `--preset`, the output adds `presetUrl`.
+- **An `https://` source** is fetched by Sanity (core's `uploadFromUrl`), and only that URL's host is allowed. The policy is checked after the fetch, and a rejected file is deleted again. `http://` is refused.
+- **Owner.** Without `--entity-type/--entity-id`, the image belongs to the CLI (`{ type: "cli", id: "assetlake-cli" }`), so `assetlake delete` can remove it later. This started in 0.2.0: images uploaded with 0.1.0 without an entity can only be deleted in the Studio.
+
+### delete
+
+```bash
+assetlake delete <imageId> [--entity-type user --entity-id u_123]
+```
+
+Core only deletes an image for its owner. With no flags the owner is the CLI, which covers everything `upload` created without `--entity-*`; anything else answers `FORBIDDEN`. Deleting is not instant revocation: CDN caches can keep serving the file for a while.
 
 ### url
 
@@ -78,4 +91,4 @@ assetlake doctor [--slug my-app]
 
 - Public images only: Sanity serves assets from `cdn.sanity.io` to anyone with the URL.
 - Images only, in the types the Sanity image pipeline transforms.
-- One file per `upload` call.
+- One file or URL per `upload` call.

@@ -10,45 +10,26 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+import {
+  exec,
+  isolatedEnvironment,
+  packWorkspacePackage,
+  ROOT,
+} from "./support/pack-workspace";
 
 // Pack lane: what npm users get. Packs core and the CLI exactly as `pnpm publish` would (prepack
 // builds dist, publishConfig swaps exports, workspace: ranges are rewritten), installs both tarballs
 // with npm into an empty project, then loads them with plain node.
-const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const SCAN_SECRETS = path.join(ROOT, "scripts", "scan-secrets.sh");
 const PACKAGES = {
-  core: { directory: "packages/assetlake-core", prefix: "assetlake-core-" },
-  cli: { directory: "packages/assetlake-cli", prefix: "assetlake-cli-" },
+  core: "packages/assetlake-core",
+  cli: "packages/assetlake-cli",
 } as const;
 type PackageKey = keyof typeof PACKAGES;
 const PACKAGE_KEYS = Object.keys(PACKAGES) as PackageKey[];
-
-// Same rule as scan-secrets.test.ts: children must not inherit GIT_* from a git hook, nor the
-// npm_config_* that `pnpm test:pack` exports.
-function isolatedEnvironment(extra: Record<string, string | undefined> = {}) {
-  return { PATH: process.env.PATH, HOME: process.env.HOME, ...extra };
-}
-
-function exec(
-  command: string,
-  commandArguments: string[],
-  cwd: string,
-): string {
-  const result = spawnSync(command, commandArguments, {
-    cwd,
-    env: isolatedEnvironment(),
-    encoding: "utf8",
-  });
-  if (result.status !== 0) {
-    throw new Error(
-      `${command} ${commandArguments.join(" ")} exited ${result.status}\n${result.stdout}\n${result.stderr}`,
-    );
-  }
-  return result.stdout;
-}
 
 let work = "";
 const tarballs = {} as Record<PackageKey, string>;
@@ -68,17 +49,7 @@ function manifestOf(key: PackageKey) {
 beforeAll(() => {
   work = mkdtempSync(path.join(tmpdir(), "assetlake-pack-"));
   for (const key of PACKAGE_KEYS) {
-    const { directory, prefix } = PACKAGES[key];
-    exec(
-      "pnpm",
-      ["pack", "--pack-destination", work],
-      path.join(ROOT, directory),
-    );
-    const tarball = readdirSync(work).find(
-      (file) => file.startsWith(prefix) && file.endsWith(".tgz"),
-    );
-    if (!tarball) throw new Error(`pnpm pack produced no ${prefix}*.tgz`);
-    tarballs[key] = path.join(work, tarball);
+    tarballs[key] = packWorkspacePackage(PACKAGES[key], work);
 
     const target = path.join(work, `${key}-unpacked`);
     mkdirSync(target);

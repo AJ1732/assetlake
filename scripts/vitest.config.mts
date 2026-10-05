@@ -4,8 +4,12 @@ export default defineConfig({
   test: {
     name: "scripts",
     include: ["*.test.ts"],
-    // The pack lane needs the network and minutes, not the gate lane's 2s budget.
-    exclude: [...configDefaults.exclude, "*.pack.test.ts"],
+    // The pack and example lanes need the network and minutes, not the gate lane's 2s budget.
+    exclude: [
+      ...configDefaults.exclude,
+      "*.pack.test.ts",
+      "*.examples.test.ts",
+    ],
     environment: "node",
   },
 });

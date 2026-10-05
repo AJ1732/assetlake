@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import type { StoredAsset } from "../store/asset-lake-store";
 import { createPngBytes, signatureBytes } from "../testing/image-fixtures";
 import { basePolicy } from "../testing/scenario";
-import { validateBeforeUpload, validateDimensions } from "./validate-upload";
+import {
+  validateAfterRemoteUpload,
+  validateBeforeUpload,
+  validateDimensions,
+} from "./validate-upload";
 
 const png = createPngBytes(4, 4);
 
@@ -100,5 +104,45 @@ describe("validateDimensions", () => {
       maxHeight: 50,
     };
     expect(() => validateDimensions(policy, asset(100, 50))).not.toThrow();
+  });
+});
+
+describe("validateAfterRemoteUpload", () => {
+  const remote = (overrides: Partial<StoredAsset> = {}): StoredAsset => ({
+    assetId: "image-b-300x200-png",
+    url: "https://cdn.sanity.io/b.png",
+    mimeType: "image/png",
+    size: 2048,
+    width: 300,
+    height: 200,
+    lqip: null,
+    blurHash: null,
+    ...overrides,
+  });
+
+  it("passes an asset inside the policy", () => {
+    expect(() => validateAfterRemoteUpload(basePolicy, remote())).not.toThrow();
+  });
+
+  it.each([
+    [
+      "a type the policy does not allow",
+      remote({ mimeType: "image/gif" }),
+      "UNSUPPORTED_IMAGE_TYPE",
+    ],
+    [
+      "a size over the limit",
+      remote({ size: basePolicy.maxFileSizeBytes + 1 }),
+      "FILE_TOO_LARGE",
+    ],
+    [
+      "dimensions outside the bounds",
+      remote({ width: 50 }),
+      "DIMENSIONS_OUT_OF_RANGE",
+    ],
+  ])("rejects %s", (_label, asset, code) => {
+    expect(() =>
+      validateAfterRemoteUpload({ ...basePolicy, minWidth: 100 }, asset),
+    ).toThrow(expect.objectContaining({ code }));
   });
 });

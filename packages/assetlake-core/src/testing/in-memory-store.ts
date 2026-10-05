@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import { fileTypeFromBuffer } from "file-type";
+
 import type { EntityRef } from "../contracts";
 import { planDocumentIds, type SetupPlan } from "../setup/setup-plan";
 import type {
@@ -18,7 +20,14 @@ import {
 } from "../store/setup-store";
 import { readPngDimensions } from "./image-fixtures";
 
-type Failure = "uploadImageAsset" | "createImage" | "deleteAsset";
+type Failure =
+  | "uploadImageAsset"
+  | "uploadImageAssetFromUrl"
+  | "createImage"
+  | "deleteAsset";
+
+const httpError = (statusCode: number, message: string) =>
+  Object.assign(new Error(message), { statusCode });
 
 export interface InMemoryStoreSeed {
   applications?: ApplicationRecord[];
@@ -42,6 +51,7 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
   readonly images = new Map<string, NewImageRecord>();
   readonly calls: Record<string, number> = {};
   private readonly failures = new Map<Failure, Error>();
+  private readonly remoteSources = new Map<string, Uint8Array>();
 
   constructor(seed: InMemoryStoreSeed = {}) {
     seed.applications?.forEach((record) =>
@@ -49,6 +59,11 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
     );
     seed.policies?.forEach((record) => this.policies.set(record.id, record));
     seed.presets?.forEach((record) => this.presets.set(record.slug, record));
+  }
+
+  /** Makes uploadImageAssetFromUrl find these bytes at this URL, like a reachable source. */
+  serveRemote(url: string, bytes: Uint8Array): void {
+    this.remoteSources.set(url, bytes);
   }
 
   failNext(
@@ -148,6 +163,22 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
     { contentType }: { filename: string; contentType: string },
   ) {
     this.track("uploadImageAsset");
+    return this.storeAsset(body, contentType);
+  }
+
+  // Mirrors what Sanity answered in the B11 spikes: 400 for an unreachable source, 422 when the
+  // bytes are not an image it can decode.
+  async uploadImageAssetFromUrl(url: string) {
+    this.track("uploadImageAssetFromUrl");
+    const body = this.remoteSources.get(url);
+    if (!body) throw httpError(400, "Asset URL returned HTTP 404.");
+    const detected = await fileTypeFromBuffer(body);
+    if (!detected?.mime.startsWith("image/"))
+      throw httpError(422, "Invalid image, could not process");
+    return this.storeAsset(body, detected.mime);
+  }
+
+  private storeAsset(body: Uint8Array, contentType: string): StoredAsset {
     const digest = createHash("sha1").update(body).digest("hex");
     const dimensions = readPngDimensions(body);
     const extension = contentType.split("/")[1] ?? "bin";

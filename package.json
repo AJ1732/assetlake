@@ -16,6 +16,7 @@
     "test:live": "vitest run --config vitest.live.config.mts",
     "test:e2e": "pnpm --filter @assetlake/demo-web test:e2e",
     "test:pack": "vitest run --config vitest.pack.config.mts",
+    "test:examples": "vitest run --config vitest.examples.config.mts",
     "seed": "tsx --env-file-if-exists=.env.local scripts/seed-demo.ts",
     "seed:reset": "tsx --env-file-if-exists=.env.local scripts/seed-demo.ts --reset",
     "scan:secrets": "./scripts/scan-secrets.sh",

@@ -14,11 +14,14 @@ export const TEST_TARGET: CliTarget = {
   token: TEST_TOKEN,
 };
 
-export function createTestLake(store = new InMemoryStore()) {
-  const assetLake = createAssetLake(TEST_TARGET, {
-    store,
-    logger: silentLogger,
-  });
+export function createTestLake(
+  store = new InMemoryStore(),
+  remoteHosts: string[] = [],
+) {
+  const assetLake = createAssetLake(
+    { ...TEST_TARGET, remoteUploads: { allowedHosts: remoteHosts } },
+    { store, logger: silentLogger },
+  );
   return { store, assetLake };
 }
 

@@ -12,7 +12,7 @@ Works against any Sanity project you own: you bring the project id, dataset and 
 
 | Import                      | Where                               | What                                                                                     |
 | --------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------- |
-| `@assetlake/core`           | Server only (holds the write token) | `createAssetLake`, `createSetupPlan`, contract types, errors, logger                     |
+| `@assetlake/core`           | Server only (holds the write token) | `createAssetLake` (upload, `uploadFromUrl`, URLs, delete, setup), contract types, errors |
 | `@assetlake/core/url`       | Browser safe                        | `createImageUrls` (`buildUrl`, `buildResponsive`), `responsiveWidths`                    |
 | `@assetlake/core/contracts` | Anywhere                            | Types and constants only (document types, enums, HTTP envelope, `Idempotency-Key`)       |
 | `@assetlake/core/testing`   | Tests (Node)                        | `InMemoryStore`, `createPngBytes`, `signatureBytes`, `createManualClock`, `silentLogger` |
@@ -101,6 +101,34 @@ console.log(await assetLake.images.url(image.id, { preset: "avatar" }));
 
 The npm package ships compiled ESM and `.d.ts` files, so plain `node` loads it. The application, policy and presets have to exist first (see "Set up a project", or run `npx @assetlake/cli init`). `contentType` must match the file's bytes: core checks the magic bytes against it.
 
+## Upload from a URL (large files)
+
+Sanity has no presigned uploads: every Assets API call needs a token, so browsers can't upload to Sanity directly. To keep large files off your server, have the browser upload to your own bucket with a presigned PUT (S3, R2, GCS), then hand AssetLake a presigned GET URL. Sanity fetches the file itself; the bytes never pass through your server and the token never leaves it.
+
+```ts
+const assetLake = createAssetLake({
+  // ...projectId, dataset, apiVersion, token
+  remoteUploads: { allowedHosts: ["my-bucket.s3.eu-west-1.amazonaws.com"] },
+});
+
+const image = await assetLake.images.uploadFromUrl({
+  url: presignedGetUrl, // https only, on an allowed host
+  filename: "photo.jpg", // optional
+  applicationId: "assetlake-application-my-app",
+  purpose: "content",
+  entity: { type: "user", id: userId },
+  actorId: userId,
+});
+```
+
+- **Off by default.** With no `allowedHosts`, every call fails with `SOURCE_URL_NOT_ALLOWED` before any request. Whoever controls the URL decides what Sanity pulls into your dataset (and your bill), so list only your bucket's host. Patterns are exact hostnames or `*.example.com` for subdomains. URLs with credentials, ports or `http:` are refused.
+- **Policy checks run after the upload.** Sanity fetches and decodes the file, then AssetLake checks its type, size and dimensions against the policy and deletes the asset if it fails. Until that delete lands, a rejected file is public on `cdn.sanity.io` (and CDN caches can outlive the delete). Use byte uploads where that window is unacceptable.
+- **Errors:** `SOURCE_URL_NOT_ALLOWED` (refused before any request), `SOURCE_FETCH_FAILED` (the source was unreachable or timed out), `UNSUPPORTED_IMAGE_TYPE` (Sanity couldn't decode it as an image, or the policy forbids the type), `FILE_TOO_LARGE`, `DIMENSIONS_OUT_OF_RANGE`.
+- **Timeouts.** Sanity may spend up to 300 s fetching (50 MiB limit). After a timeout the asset may already exist: retry with the same `idempotencyKey` so a completed first attempt is returned, not duplicated.
+- **URLs are never logged or stored.** Presigned URLs carry signatures, so logs record only `sourceHost`, and error messages never echo the URL.
+
+Working examples: [`examples/express`](../../examples/express) and [`examples/nextjs`](../../examples/nextjs).
+
 ## Browser usage
 
 ```ts
@@ -123,6 +151,8 @@ const src = urls.buildUrl(image.assetId, {
 4. Upload the asset with `client.assets.upload("image", ...)`.
 5. Check dimensions against the policy, then create the `assetLakeImage` record (`review` if the policy requires it).
 6. On any failure after step 4, delete the asset unless Sanity answers 409 (identical bytes dedupe to one asset that another record still references). The original error always surfaces.
+
+`uploadFromUrl` follows the same sequence, except step 3 only checks the URL against `remoteUploads.allowedHosts`; the type, size and dimension checks run at step 5, on Sanity's analysis of the fetched file.
 
 Ids are `assetlake-image-<uuid>` or `assetlake-image-<sha256(actor:key)>`, never dotted, so tokenless public reads can see them.
 

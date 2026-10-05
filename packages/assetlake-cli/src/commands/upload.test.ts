@@ -9,8 +9,10 @@ import { upload, type UploadOptions } from "./upload";
 const APPLICATION_ID = "assetlake-application-my-app";
 const png = createPngBytes(300, 200);
 
-async function readyLake() {
-  const lake = createTestLake();
+const REMOTE = "https://uploads.example.com/photos/sunset%20sky.png";
+
+async function readyLake(remoteHosts: string[] = []) {
+  const lake = createTestLake(undefined, remoteHosts);
   await lake.assetLake.setup.ensure(
     createSetupPlan({ applicationSlug: "my-app" }),
   );
@@ -18,7 +20,7 @@ async function readyLake() {
 }
 
 const options = (overrides: Partial<UploadOptions> = {}): UploadOptions => ({
-  file: "./photos/photo.png",
+  source: "./photos/photo.png",
   applicationId: APPLICATION_ID,
   purpose: "content",
   tags: [],
@@ -62,7 +64,7 @@ describe("upload", () => {
 
     const result = await upload(
       { assetLake, readFile: async () => png },
-      options({ file: "photo.jpg" }),
+      options({ source: "photo.jpg" }),
     );
 
     expect(result.output).toMatchObject({ mimeType: "image/png" });
@@ -75,7 +77,7 @@ describe("upload", () => {
     await expect(
       upload(
         { assetLake, readFile: async () => text },
-        options({ file: "people.png" }),
+        options({ source: "people.png" }),
       ),
     ).rejects.toThrow("people.png is not an image");
     expect(store.calls.uploadImageAsset).toBeUndefined();
@@ -100,6 +102,46 @@ describe("upload", () => {
       alt: "A red square",
       tags: ["demo", "cli"],
     });
+  });
+
+  it("records the CLI as the owner when no entity is given, so delete can remove it", async () => {
+    const { store, assetLake } = await readyLake();
+
+    const result = await upload(
+      { assetLake, readFile: async () => png },
+      options(),
+    );
+
+    const record = store.images.get((result.output as { id: string }).id);
+    expect(record?.entity).toEqual({ type: "cli", id: "assetlake-cli" });
+  });
+
+  it("has Sanity fetch an https URL instead of reading a file", async () => {
+    const { store, assetLake } = await readyLake(["uploads.example.com"]);
+    store.serveRemote(REMOTE, png);
+    const readFile = async (): Promise<Uint8Array> => {
+      throw new Error("must not read a file for a URL source");
+    };
+
+    const result = await upload(
+      { assetLake, readFile },
+      options({ source: REMOTE }),
+    );
+
+    expect(result.output).toMatchObject({ status: "ready", width: 300 });
+    expect(store.calls.uploadImageAssetFromUrl).toBe(1);
+  });
+
+  it("refuses a plain http URL as a usage error", async () => {
+    const { store, assetLake } = await readyLake(["uploads.example.com"]);
+
+    const attempt = upload(
+      { assetLake, readFile: async () => png },
+      options({ source: "http://uploads.example.com/a.png" }),
+    );
+
+    await expect(attempt).rejects.toBeInstanceOf(UsageError);
+    expect(store.calls.uploadImageAssetFromUrl).toBeUndefined();
   });
 
   it("rejects an unknown purpose as a usage error", async () => {

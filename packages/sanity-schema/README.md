@@ -14,7 +14,7 @@ AssetLake content model, schema deployment config and TypeGen output.
 ## Subpath exports
 
 - `@assetlake/sanity-schema`: schema types. Helpers come from `@sanity/types` (re-exported unchanged by `sanity`), so tests and core-adjacent code never load the Studio bundle.
-- `@assetlake/sanity-schema/project`: the demo's public project id and defaults.
+- `@assetlake/sanity-schema/project`: the demo's public project id and dataset as defaults, plus `resolveSanityProject(source, variables)`, the one reader every app, script and config uses to override them from the environment. Errors name the variable, never the value.
 
 Enums and document type names live in `@assetlake/core/contracts` (moved there in B10 so the npm package has no Studio dependency). This package depends on core, never the reverse.
 
@@ -27,14 +27,16 @@ Every seeded or AssetLake-created document id uses `assetlake-<type>-<slug-or-ha
 ```bash
 pnpm --filter @assetlake/sanity-schema test           # gate: schema shape
 SANITY_AUTH_TOKEN=<deploy token> pnpm --filter @assetlake/sanity-schema schema:deploy
+SANITY_STUDIO_PROJECT_ID=<id> SANITY_STUDIO_DATASET=<dataset> pnpm --filter @assetlake/sanity-schema schema:deploy
 pnpm --filter @assetlake/sanity-schema schema:list
 pnpm --filter @assetlake/sanity-schema typegen        # schema.json + src/sanity.types.ts
 ```
 
-The demo seed moved to the repo root in B10 (`scripts/seed-demo.ts`, run with `tsx`). It writes the campus-demo plan through core's setup module, the same code path as `assetlake init`. Secrets come from the root `.env.local` (`SANITY_WRITE_TOKEN`, optional `SANITY_DATASET`, `SANITY_API_VERSION`).
+The demo seed moved to the repo root in B10 (`scripts/seed-demo.ts`, run with `tsx`). It writes the campus-demo plan through core's setup module, the same code path as `assetlake init`. Secrets come from the root `.env.local` (`SANITY_WRITE_TOKEN`, optional `SANITY_PROJECT_ID`, `SANITY_DATASET`, `SANITY_API_VERSION`).
 
 ```bash
 pnpm seed                      # create-if-missing: keeps live console edits
 pnpm seed:reset                # restores the seeded preset values
 SANITY_DATASET=test pnpm seed
+SANITY_PROJECT_ID=<your project> pnpm seed   # bring your own project
 ```

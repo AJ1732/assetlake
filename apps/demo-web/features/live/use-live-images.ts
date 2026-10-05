@@ -1,34 +1,40 @@
-import { useSyncExternalStore } from "react";
+import type { SanityProject } from "@assetlake/sanity-schema/project";
+import { useMemo, useSyncExternalStore } from "react";
 
-import { sanityPublicClient } from "@/lib/public/sanity-public-client";
+import { createSanityPublicClient } from "@/lib/public/sanity-public-client";
 
 import {
   createLiveImagesStore,
   INITIAL_LIVE_SNAPSHOT,
-  type LiveImagesStore,
 } from "./live-images-store";
+import { memoizeByTarget } from "./memoize-by-target";
 import { createSanityLiveSource } from "./sanity-live-source";
 
-let store: LiveImagesStore | undefined;
-
-function getStore(): LiveImagesStore {
-  store ??= createLiveImagesStore({
-    source: createSanityLiveSource(sanityPublicClient),
+const getStore = memoizeByTarget((target) =>
+  createLiveImagesStore({
+    source: createSanityLiveSource(createSanityPublicClient(target)),
     focusTarget: window,
-  });
-  return store;
-}
+  }),
+);
 
-const subscribe = (listener: () => void) => getStore().subscribe(listener);
-const getSnapshot = () => getStore().getSnapshot();
 const getServerSnapshot = () => INITIAL_LIVE_SNAPSHOT;
-const refresh = () => getStore().refresh();
 
-export function useLiveImages() {
+export function useLiveImages({ projectId, dataset }: SanityProject) {
+  // The store is resolved inside the callbacks, not during render: the server render only calls
+  // getServerSnapshot, and creating a store there would touch window.
+  const store = useMemo(() => {
+    const resolve = () => getStore({ projectId, dataset });
+    return {
+      subscribe: (listener: () => void) => resolve().subscribe(listener),
+      getSnapshot: () => resolve().getSnapshot(),
+      refresh: () => resolve().refresh(),
+    };
+  }, [projectId, dataset]);
+
   const snapshot = useSyncExternalStore(
-    subscribe,
-    getSnapshot,
+    store.subscribe,
+    store.getSnapshot,
     getServerSnapshot,
   );
-  return { ...snapshot, refresh };
+  return { ...snapshot, refresh: store.refresh };
 }

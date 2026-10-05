@@ -1,16 +1,23 @@
 import { z } from "zod";
 
-const DATASET_NAME = /^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$/;
+import {
+  SANITY_DATASET_PATTERN,
+  SANITY_PROJECT_ID_PATTERN,
+} from "../constants";
+
 // A hostname with at least one dot, optionally behind "*." for its subdomains. No scheme or path.
 const HOST_PATTERN = /^(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)+$/;
 
 export const assetLakeConfigSchema = z.object({
   projectId: z
     .string()
-    .regex(/^[a-z0-9-]+$/, "projectId must be a Sanity project id"),
+    .regex(SANITY_PROJECT_ID_PATTERN, "projectId must be a Sanity project id"),
   dataset: z
     .string()
-    .regex(DATASET_NAME, "dataset must be a valid Sanity dataset name"),
+    .regex(
+      SANITY_DATASET_PATTERN,
+      "dataset must be a valid Sanity dataset name",
+    ),
   apiVersion: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "apiVersion must be YYYY-MM-DD"),

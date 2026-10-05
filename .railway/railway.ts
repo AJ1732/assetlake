@@ -6,7 +6,8 @@ import { defineRailway, github, preserve, project, service } from "railway/iac";
 export default defineRailway(() => {
   const demoWeb = service("demo-web", {
     // Repo root, not apps/demo-web: the pnpm workspace install needs the root lockfile.
-    source: github("AJ1732/sal", { branch: "dev" }),
+    // Deploys from main (moved from dev on 2026-10-05). Applying this file sets the trigger branch.
+    source: github("AJ1732/assetlake", { branch: "main" }),
     build: {
       builder: "RAILPACK",
       buildCommand: "pnpm --filter @assetlake/demo-web... build",
@@ -27,6 +28,7 @@ export default defineRailway(() => {
     // Read at import by lib/server/env.ts, so `next build` needs them too. Railway exposes service
     // variables at build time. NODE_ENV is left to `next start`, which sets production.
     env: {
+      SANITY_PROJECT_ID: "oshzwvjy",
       SANITY_DATASET: "production",
       SANITY_API_VERSION: "2026-10-04",
       ASSETLAKE_DAILY_UPLOAD_CAP: "200",

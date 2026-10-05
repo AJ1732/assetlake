@@ -62,6 +62,11 @@ export const APPLICATION_ENVIRONMENTS = [
 
 export const PRESET_QUALITY_RANGE = { min: 1, max: 100 } as const;
 
+// Sanity naming rules, shared by core's config and every app that reads a project from the
+// environment. Datasets: 1-64 chars of a-z 0-9 _ -, starting and ending with a letter or digit.
+export const SANITY_PROJECT_ID_PATTERN = /^[a-z0-9-]+$/;
+export const SANITY_DATASET_PATTERN = /^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$/;
+
 export type DocumentType = (typeof DOCUMENT_TYPES)[keyof typeof DOCUMENT_TYPES];
 export type ImageFitMode = (typeof IMAGE_FIT_MODES)[number];
 export type ImageCropMode = (typeof IMAGE_CROP_MODES)[number];

@@ -201,3 +201,22 @@ The live lane runs this path against a real dataset (`packages/assetlake-core/te
 ### 4. Large files: upload from a URL
 
 Sanity has no presigned uploads (every Assets API call needs a token), so browsers can't upload to Sanity directly. To keep large files off your server, upload them to your own bucket with a presigned PUT, then pass a presigned GET URL to `assetLake.images.uploadFromUrl`. Sanity fetches the file itself. It is off until you list your bucket's host in `remoteUploads.allowedHosts`, and its policy checks run after the fetch, so a rejected file is briefly public before AssetLake deletes it. Details in the [core README](packages/assetlake-core/README.md#upload-from-a-url-large-files).
+
+### 5. Run this repo's apps against your project
+
+A fork needs no code changes. Every app, script and config reads its project from the environment and falls back to the demo's (`oshzwvjy` / `production`). Invalid values fail at startup or build, naming the variable.
+
+| What                                     | Variables                                                       | Read when                     |
+| ---------------------------------------- | --------------------------------------------------------------- | ----------------------------- |
+| demo-web (server, and `/live` via props) | `SANITY_PROJECT_ID`, `SANITY_DATASET`                           | `next build` and `next start` |
+| `pnpm seed`                              | `SANITY_PROJECT_ID`, `SANITY_DATASET`                           | each run                      |
+| Asset console                            | `SANITY_APP_PROJECT_ID`, `SANITY_APP_DATASET`                   | `sanity build` / `deploy`     |
+| Console deploy identity                  | `ASSETLAKE_CONSOLE_ORGANIZATION_ID`, `ASSETLAKE_CONSOLE_APP_ID` | `sanity deploy`               |
+| Schema deploy and TypeGen                | `SANITY_STUDIO_PROJECT_ID`, `SANITY_STUDIO_DATASET`             | Sanity CLI                    |
+
+demo-web sends only the project id and dataset to the browser, as a Server Component prop: there is no `NEXT_PUBLIC_` variable. `/live` and `/docs` are rendered at build time, so a project change needs a rebuild. On Railway, set `SANITY_PROJECT_ID` in `.railway/railway.ts` and run `railway config apply`. The console's details are in its [README](apps/asset-console/README.md).
+
+```bash
+SANITY_PROJECT_ID=<your project> pnpm seed   # the demo's application, policy and presets
+SANITY_PROJECT_ID=<your project> pnpm dev
+```

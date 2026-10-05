@@ -36,13 +36,23 @@ Run from the repository root.
 ```bash
 pnpm --filter @assetlake/asset-console dev                           # production dataset
 SANITY_APP_DATASET=test pnpm --filter @assetlake/asset-console dev   # test dataset, safe for preset experiments
+SANITY_APP_PROJECT_ID=<id> pnpm --filter @assetlake/asset-console dev # your own project (default: oshzwvjy)
 pnpm --filter @assetlake/asset-console test
 pnpm --filter @assetlake/asset-console typecheck
 ```
 
 `dev` prints a Dashboard URL. The app only renders there, signed in with a Sanity account that is a member of the project.
 
-Deploy (the first deploy creates the app; save the returned `application.id` as `deployment.appId` in `sanity.cli.ts`):
+Deploy. With nothing set, `sanity.cli.ts` deploys the demo console (organization `o5eRlVKEZ`). A fork sets these in `apps/asset-console/.env`, which the Sanity CLI loads. Only `SANITY_APP_*` reach the browser bundle; the `ASSETLAKE_CONSOLE_*` names are read by the CLI alone.
+
+| Variable                            | Read by              | Default                                                |
+| ----------------------------------- | -------------------- | ------------------------------------------------------ |
+| `SANITY_APP_PROJECT_ID`             | the app (build time) | `oshzwvjy`                                             |
+| `SANITY_APP_DATASET`                | the app (build time) | `production`                                           |
+| `ASSETLAKE_CONSOLE_ORGANIZATION_ID` | `sanity.cli.ts`      | the demo's organization                                |
+| `ASSETLAKE_CONSOLE_APP_ID`          | `sanity.cli.ts`      | the demo's app id, only when the organization is unset |
+
+The first deploy in a new organization creates the app: leave `ASSETLAKE_CONSOLE_APP_ID` unset, run the command below, then save the returned `application.id` as `ASSETLAKE_CONSOLE_APP_ID`.
 
 ```bash
 cd apps/asset-console
@@ -53,6 +63,6 @@ env -u SANITY_APP_DATASET pnpm exec sanity deploy --create --title "AssetLake Co
 
 ## Tests
 
-Gate tests cover the pure data layer in `src/data/`: aggregation, filters, view models, the preset mapper (checked against core's own resolver), the draft diff, and the dataset fallback. One test fails if any app source file uses the word "bandwidth", because the byte total is a sum of original file sizes, not account usage (handoff §31 rule 11).
+Gate tests cover the pure data layer in `src/data/`: aggregation, filters, view models, the preset mapper (checked against core's own resolver), the draft diff, and the project, dataset and deployment fallbacks. One test fails if any app source file uses the word "bandwidth", because the byte total is a sum of original file sizes, not account usage (handoff §31 rule 11).
 
 The screens run inside the authenticated Dashboard, so they are verified by the manual §21.3 checklist rather than Playwright.

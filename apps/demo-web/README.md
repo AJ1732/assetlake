@@ -18,6 +18,8 @@ First Playwright run needs browsers: `pnpm --filter @assetlake/demo-web exec pla
 
 Copy the root `.env.example` to `apps/demo-web/.env.local`. `SANITY_WRITE_TOKEN` is server only and must never get a `NEXT_PUBLIC_` prefix.
 
+`SANITY_PROJECT_ID` and `SANITY_DATASET` pick the Sanity project (blank or unset: `oshzwvjy` / `production`). The server reads them in `lib/server/env.ts`; `/live` and `/docs` pass only those two values to the browser through `getPublicSanityTarget()` (`lib/server/sanity-target.ts`), as a Server Component prop. Both pages are rendered at build time, so changing the project needs a rebuild.
+
 ## Pages
 
 | Route           | What it shows                                                                                                        |

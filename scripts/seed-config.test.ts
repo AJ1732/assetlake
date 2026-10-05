@@ -11,8 +11,9 @@ describe("readSeedConfig", () => {
     );
   });
 
-  it("defaults to the production dataset, pinned api version, and non-destructive mode", () => {
+  it("defaults to the demo project, production dataset, pinned api version, and non-destructive mode", () => {
     expect(readSeedConfig({ SANITY_WRITE_TOKEN: TOKEN }, [])).toEqual({
+      projectId: "oshzwvjy",
       dataset: "production",
       apiVersion: "2026-10-04",
       token: TOKEN,
@@ -34,9 +35,31 @@ describe("readSeedConfig", () => {
           { SANITY_WRITE_TOKEN: TOKEN, SANITY_DATASET: dataset },
           [],
         ),
-      ).toThrow(/Invalid SANITY_DATASET/);
+      ).toThrow(/SANITY_DATASET/);
     },
   );
+
+  it("seeds another project when SANITY_PROJECT_ID is set", () => {
+    expect(
+      readSeedConfig(
+        { SANITY_WRITE_TOKEN: TOKEN, SANITY_PROJECT_ID: "abc123" },
+        [],
+      ).projectId,
+    ).toBe("abc123");
+  });
+
+  it("rejects an invalid project id by name, without echoing it", () => {
+    expect(() =>
+      readSeedConfig(
+        { SANITY_WRITE_TOKEN: TOKEN, SANITY_PROJECT_ID: "Not An Id" },
+        [],
+      ),
+    ).toThrow(
+      expect.objectContaining({
+        message: expect.stringMatching(/SANITY_PROJECT_ID$/),
+      }),
+    );
+  });
 
   it("accepts the test dataset", () => {
     expect(

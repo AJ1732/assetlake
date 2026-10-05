@@ -31,6 +31,7 @@ describe("server environment", () => {
     const { parseServerEnvironment } = await loadEnvironmentModule();
     expect(parseServerEnvironment(complete)).toEqual({
       ...complete,
+      SANITY_PROJECT_ID: "oshzwvjy",
       SANITY_DATASET: "production",
       SANITY_API_VERSION: "2026-10-04",
       ASSETLAKE_DAILY_UPLOAD_CAP: 200,
@@ -52,6 +53,47 @@ describe("server environment", () => {
     expect(message).toBe(
       "Invalid demo-web server environment: ASSETLAKE_DEMO_PASSCODE, ASSETLAKE_SESSION_SECRET",
     );
+  });
+
+  it("targets another project when SANITY_PROJECT_ID is set", async () => {
+    const { parseServerEnvironment } = await loadEnvironmentModule();
+    expect(
+      parseServerEnvironment({ ...complete, SANITY_PROJECT_ID: "abc123" }),
+    ).toMatchObject({
+      SANITY_PROJECT_ID: "abc123",
+      SANITY_DATASET: "production",
+    });
+  });
+
+  it("treats blank lines from .env.example as unset", async () => {
+    const { parseServerEnvironment } = await loadEnvironmentModule();
+    expect(
+      parseServerEnvironment({
+        ...complete,
+        SANITY_PROJECT_ID: "",
+        SANITY_DATASET: "  ",
+      }),
+    ).toMatchObject({
+      SANITY_PROJECT_ID: "oshzwvjy",
+      SANITY_DATASET: "production",
+    });
+  });
+
+  it("still requires secrets that are present but blank", async () => {
+    const { parseServerEnvironment } = await loadEnvironmentModule();
+    expect(() =>
+      parseServerEnvironment({ ...complete, SANITY_WRITE_TOKEN: " " }),
+    ).toThrow("Invalid demo-web server environment: SANITY_WRITE_TOKEN");
+  });
+
+  it.each([
+    ["SANITY_PROJECT_ID", "Not An Id"],
+    ["SANITY_DATASET", "Prod.Data"],
+  ])("rejects %s=%j by name", async (name, value) => {
+    const { parseServerEnvironment } = await loadEnvironmentModule();
+    expect(() =>
+      parseServerEnvironment({ ...complete, [name]: value }),
+    ).toThrow(`Invalid demo-web server environment: ${name}`);
   });
 
   it.each(["0", "-5", "1.5", "lots"])("rejects daily cap %j", async (cap) => {

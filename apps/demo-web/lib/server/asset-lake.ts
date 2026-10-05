@@ -1,7 +1,6 @@
 import "server-only";
 
 import { type AssetLake, createAssetLake } from "@assetlake/core";
-import { SANITY_PROJECT_ID } from "@assetlake/sanity-schema/project";
 
 import { serverEnv as environment } from "./env";
 
@@ -12,7 +11,7 @@ let assetLake: AssetLake | undefined;
 
 export function getAssetLake(): AssetLake {
   assetLake ??= createAssetLake({
-    projectId: SANITY_PROJECT_ID,
+    projectId: environment.SANITY_PROJECT_ID,
     dataset: environment.SANITY_DATASET,
     apiVersion: environment.SANITY_API_VERSION,
     token: environment.SANITY_WRITE_TOKEN,

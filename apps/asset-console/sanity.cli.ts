@@ -1,13 +1,15 @@
 import { defineCliConfig } from "sanity/cli";
 
+import { resolveConsoleDeployment } from "./src/data/config";
+
+// The Sanity CLI loads this app's .env files into process.env before reading this file.
+const { organizationId, appId } = resolveConsoleDeployment(process.env);
+
 export default defineCliConfig({
   app: {
-    organizationId: "o5eRlVKEZ",
+    organizationId,
     entry: "./src/app.tsx",
     title: "AssetLake Console",
   },
-  // Written from the first `sanity deploy --create --json` (2026-10-04). Never invent this id.
-  deployment: {
-    appId: "otc94a70i1qncgk3i3hmzosp",
-  },
+  ...(appId ? { deployment: { appId } } : {}),
 });

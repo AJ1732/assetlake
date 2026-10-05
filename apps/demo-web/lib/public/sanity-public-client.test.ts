@@ -1,15 +1,27 @@
+import type { SanityProject } from "@assetlake/sanity-schema/project";
 import { describe, expect, it } from "vitest";
 
-import { publicClientConfig, sanityPublicClient } from "./sanity-public-client";
+import {
+  createPublicClientConfig,
+  createSanityPublicClient,
+} from "./sanity-public-client";
 
-describe("sanityPublicClient", () => {
-  it("is configured without a token", () => {
-    expect("token" in publicClientConfig).toBe(false);
-    expect(sanityPublicClient.config().token).toBeUndefined();
+const TARGET = { projectId: "abc123", dataset: "staging" };
+
+describe("createSanityPublicClient", () => {
+  it("targets the given project and dataset", () => {
+    expect(createSanityPublicClient(TARGET).config()).toMatchObject(TARGET);
+  });
+
+  it("is configured without a token, even when the target carries one", () => {
+    const smuggled = { ...TARGET, token: "sk-secret" } as SanityProject;
+
+    expect("token" in createPublicClientConfig(smuggled)).toBe(false);
+    expect(createSanityPublicClient(smuggled).config().token).toBeUndefined();
   });
 
   it("reads published content through the API CDN", () => {
-    expect(sanityPublicClient.config()).toMatchObject({
+    expect(createSanityPublicClient(TARGET).config()).toMatchObject({
       useCdn: true,
       perspective: "published",
     });

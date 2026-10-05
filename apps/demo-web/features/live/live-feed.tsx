@@ -1,9 +1,12 @@
 "use client";
 
+import { createImageUrls, type ImageUrls } from "@assetlake/core/url";
+import type { SanityProject } from "@assetlake/sanity-schema/project";
+import { useMemo } from "react";
+
 import { AssetLakeImage } from "@/components/asset-lake-image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { publicImageUrls } from "@/lib/public/public-sanity";
 
 import { formatRelativeTime } from "./format-time";
 import { LIVE_FEED_SIZE, type LiveImage } from "./live-query";
@@ -18,14 +21,21 @@ const THUMBNAIL = {
 const THUMBNAIL_SIZES = "(max-width: 640px) 45vw, 200px";
 const SKELETON_TILES = 8;
 
-export function LiveFeed() {
-  const { status, mode, images, error, updatedAt, refresh } = useLiveImages();
+export function LiveFeed({ target }: { target: SanityProject }) {
+  const { projectId, dataset } = target;
+  const { status, mode, images, error, updatedAt, refresh } =
+    useLiveImages(target);
+  const imageUrls = useMemo(
+    () => createImageUrls({ projectId, dataset }),
+    [projectId, dataset],
+  );
 
   return (
     <section
       className="live"
       data-testid="live-feed"
       data-status={status}
+      data-sanity-target={`${projectId}/${dataset}`}
       aria-labelledby="live-title"
     >
       <div className="live-toolbar">
@@ -80,7 +90,12 @@ export function LiveFeed() {
       {status === "ready" && images.length > 0 ? (
         <ol className="live-grid">
           {images.map((image) => (
-            <LiveTile key={image.id} image={image} now={updatedAt ?? 0} />
+            <LiveTile
+              key={image.id}
+              image={image}
+              imageUrls={imageUrls}
+              now={updatedAt ?? 0}
+            />
           ))}
         </ol>
       ) : null}
@@ -89,9 +104,17 @@ export function LiveFeed() {
 }
 
 // Relative times are measured from the last fetch, not from a clock read during render.
-function LiveTile({ image, now }: { image: LiveImage; now: number }) {
+function LiveTile({
+  image,
+  imageUrls,
+  now,
+}: {
+  image: LiveImage;
+  imageUrls: ImageUrls;
+  now: number;
+}) {
   const uploaded = formatRelativeTime(image.uploadedAt, now);
-  const responsive = publicImageUrls.buildResponsive(image.image, THUMBNAIL, {
+  const responsive = imageUrls.buildResponsive(image.image, THUMBNAIL, {
     sizes: THUMBNAIL_SIZES,
     lqip: image.lqip,
   });

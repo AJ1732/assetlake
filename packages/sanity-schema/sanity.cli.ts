@@ -1,12 +1,9 @@
 import { defineCliConfig } from "sanity/cli";
 
-import { DEFAULT_DATASET, SANITY_PROJECT_ID } from "./src/project";
+import { studioProject } from "./src/studio-project";
 
 export default defineCliConfig({
-  api: {
-    projectId: SANITY_PROJECT_ID,
-    dataset: process.env.SANITY_STUDIO_DATASET ?? DEFAULT_DATASET,
-  },
+  api: studioProject,
   typegen: {
     path: "../assetlake-core/src/**/*.ts",
     schema: "schema.json",

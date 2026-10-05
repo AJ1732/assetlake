@@ -22,7 +22,7 @@ import {
 const run = Date.now().toString(36);
 const LOCAL_USER = `example-${run}`;
 const target = {
-  projectId: process.env.SANITY_PROJECT_ID ?? "oshzwvjy",
+  projectId: process.env.SANITY_PROJECT_ID?.trim() || "oshzwvjy", // blank in .env.local = unset
   dataset: process.env.SANITY_TEST_DATASET ?? "test",
   apiVersion: "2026-10-04",
   token: process.env.SANITY_WRITE_TOKEN ?? "",

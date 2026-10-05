@@ -1,18 +1,15 @@
 import type { SetupMode } from "@assetlake/core";
 import {
   DEFAULT_API_VERSION,
-  DEFAULT_DATASET,
+  resolveSanityProject,
+  type SanityProject,
 } from "@assetlake/sanity-schema/project";
 
-export interface SeedConfig {
-  dataset: string;
+export interface SeedConfig extends SanityProject {
   apiVersion: string;
   token: string;
   mode: SetupMode;
 }
-
-// Sanity dataset naming rule: 1-64 chars, a-z 0-9 - _, starts and ends with a letter or digit.
-const DATASET_NAME = /^[a-z0-9](?:[a-z0-9_-]{0,62}[a-z0-9])?$/;
 
 export function readSeedConfig(
   environment: NodeJS.ProcessEnv,
@@ -25,13 +22,11 @@ export function readSeedConfig(
     );
   }
 
-  const dataset = environment.SANITY_DATASET ?? DEFAULT_DATASET;
-  if (!DATASET_NAME.test(dataset)) {
-    throw new Error(`Invalid SANITY_DATASET "${dataset}"`);
-  }
-
   return {
-    dataset,
+    ...resolveSanityProject(environment, {
+      projectId: "SANITY_PROJECT_ID",
+      dataset: "SANITY_DATASET",
+    }),
     apiVersion: environment.SANITY_API_VERSION ?? DEFAULT_API_VERSION,
     token,
     mode: argv.includes("--reset") ? "reset" : "create-if-missing",

@@ -29,10 +29,23 @@ test("an upload in one tab appears on /live in another within 10s, without a rel
   await logIn(uploader);
   const image = await uploadAvatar(uploader, uploads);
 
-  await expect(viewer.locator(`[data-image-id="${image.id}"]`)).toBeVisible({
-    timeout: 10_000,
-  });
+  const tile = viewer.locator(`[data-image-id="${image.id}"]`);
+  await expect(tile).toBeVisible({ timeout: 10_000 });
   expect(reloads).toBe(0);
+
+  // The project reaches the browser as a Server Component prop (B10b), so the feed and its CDN
+  // URLs must follow SANITY_PROJECT_ID, not a constant in the bundle.
+  const target = await viewer
+    .getByTestId("live-feed")
+    .getAttribute("data-sanity-target");
+  // `|| default`, not `??`: a sourced .env.local can export SANITY_PROJECT_ID as "".
+  expect(target?.split("/")[0]).toBe(
+    process.env.SANITY_PROJECT_ID?.trim() || "oshzwvjy",
+  );
+  await expect(tile.locator("img")).toHaveAttribute(
+    "src",
+    new RegExp(`^https://cdn\\.sanity\\.io/images/${target}/`),
+  );
 
   await viewerContext.close();
   await uploaderContext.close();

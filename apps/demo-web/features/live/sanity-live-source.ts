@@ -6,9 +6,16 @@ import { LIVE_IMAGES_QUERY, type LiveImage } from "./live-query";
 const REQUEST_TAG = "assetlake.live-feed";
 
 export function createSanityLiveSource(client: SanityClient): LiveImagesSource {
+  // The API CDN caches this query for up to 75s (max-age=60, stale-while-revalidate=15). A fetch
+  // without a live event id (first load, restart, fallback) may come after the event for a recent
+  // upload, so a cached answer would stay stale until the next event. Those fetches read the
+  // uncached API; event-driven fetches carry lastLiveEventId, which the CDN honours.
+  const uncachedClient = client.withConfig({ useCdn: false });
+
   return {
     async fetchImages(lastLiveEventId) {
-      const response = await client.fetch<LiveImage[]>(
+      const reader = lastLiveEventId ? client : uncachedClient;
+      const response = await reader.fetch<LiveImage[]>(
         LIVE_IMAGES_QUERY,
         {},
         { filterResponse: false, lastLiveEventId, tag: REQUEST_TAG },

@@ -17,6 +17,8 @@ Works against any Sanity project you own: you bring the project id, dataset and 
 | `@assetlake/core/contracts` | Anywhere                            | Types and constants only (document types, enums, HTTP envelope, `Idempotency-Key`)       |
 | `@assetlake/core/testing`   | Tests (Node)                        | `InMemoryStore`, `createPngBytes`, `signatureBytes`, `createManualClock`, `silentLogger` |
 
+`@assetlake/core/contracts` also exports `SANITY_PROJECT_ID_PATTERN` and `SANITY_DATASET_PATTERN` (0.3.1+): the rules core's config checks `projectId` and `dataset` against, so an app can validate its environment the same way.
+
 ## Server usage
 
 ```ts
@@ -167,6 +169,8 @@ No `next`, React, Express, UI, or `@assetlake/sanity-schema` imports (ESLint `no
 ## Build and publish
 
 In the repo, `exports` point at `src/*.ts`, so the apps and Vitest need no build. `pnpm pack` and `pnpm publish` run `prepack` (tsdown builds `dist/`) and swap in `publishConfig.exports`. `src/package-manifest.test.ts` keeps the two export maps in step, and `pnpm test:pack` installs the real tarball in an empty project and imports every subpath with plain `node`.
+
+To release, bump `version`, commit and push, then run `pnpm release:check @assetlake/core`. It refuses a dirty tree, an unpushed HEAD, a version already on npm or an existing tag, and otherwise prints the exact publish, tag and push commands. Publish once, then run `pnpm release:verify @assetlake/core`: npm stages a new version for a few minutes, and a retry in that window fails even though the first publish worked.
 
 ## Tests
 

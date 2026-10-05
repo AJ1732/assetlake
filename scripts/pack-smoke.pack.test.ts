@@ -165,6 +165,17 @@ describe("installed with npm and loaded by plain node", () => {
     ).toBe(type);
   });
 
+  it("exports the Sanity name patterns from contracts (0.3.1)", () => {
+    const script = [
+      `const { SANITY_PROJECT_ID_PATTERN: project, SANITY_DATASET_PATTERN: dataset } = await import("@assetlake/core/contracts");`,
+      `console.log([project.test("oshzwvjy"), dataset.test("production"), dataset.test("Prod"), dataset.test("a".repeat(65))].join(","));`,
+    ].join(" ");
+
+    expect(
+      exec("node", ["--input-type=module", "-e", script], consumer).trim(),
+    ).toBe("true,true,false,false");
+  });
+
   it("runs the assetlake bin", () => {
     const bin = path.join(consumer, "node_modules", ".bin", "assetlake");
 

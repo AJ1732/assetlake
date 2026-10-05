@@ -19,6 +19,8 @@
     "test:examples": "vitest run --config vitest.examples.config.mts",
     "seed": "tsx --env-file-if-exists=.env.local scripts/seed-demo.ts",
     "seed:reset": "tsx --env-file-if-exists=.env.local scripts/seed-demo.ts --reset",
+    "release:check": "tsx scripts/release.ts check",
+    "release:verify": "tsx scripts/release.ts verify",
     "scan:secrets": "./scripts/scan-secrets.sh",
     "format": "prettier . --write",
     "format:check": "prettier . --check",

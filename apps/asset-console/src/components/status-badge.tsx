@@ -1,4 +1,4 @@
-import type { ImageStatus } from "@assetlake/sanity-schema/constants";
+import type { ImageStatus } from "@assetlake/core/contracts";
 import { Badge, type BadgeTone } from "@sanity/ui";
 
 import { formatLabel } from "../data/format";

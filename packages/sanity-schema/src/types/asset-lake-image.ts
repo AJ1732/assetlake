@@ -1,7 +1,10 @@
+import {
+  DOCUMENT_TYPES,
+  IMAGE_PURPOSES,
+  IMAGE_STATUSES,
+} from "@assetlake/core/contracts";
 import { ImageIcon } from "@sanity/icons/Image";
 import { defineArrayMember, defineField, defineType } from "@sanity/types";
-
-import { DOCUMENT_TYPES, IMAGE_PURPOSES, IMAGE_STATUSES } from "../constants";
 
 // Application meaning around a sanity.imageAsset. URL, dimensions, MIME and size are deliberately
 // not copied here: dereference image.asset so there is one source of truth (handoff §8.4).

@@ -1,83 +1,54 @@
-import {
-  DEFAULT_API_VERSION,
-  SANITY_PROJECT_ID,
-} from "@assetlake/sanity-schema/project";
 import { createClient } from "@sanity/client";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { createAssetLake } from "../../src/create-asset-lake";
+import { createSetupPlan, planDocumentIds } from "../../src/setup/setup-plan";
 import { createPngBytes } from "../../src/testing/image-fixtures";
+import { liveTarget } from "./live-target";
 
-// Eval lane: proves the root README's "Use AssetLake with your own Sanity project" steps. It sets up
-// a fresh policy, preset and application exactly as the README does (not the seeded campus demo),
-// then uploads through it. Keep these document shapes in sync with that README section.
-const dataset = process.env.SANITY_TEST_DATASET ?? "test";
-const token = process.env.SANITY_WRITE_TOKEN ?? "";
+// Eval lane: proves the root README's "Use AssetLake with your own Sanity project" path. It creates
+// a fresh application through assetLake.setup (the code behind `assetlake init`), not the seeded
+// campus demo, then uploads through it. Presets are dataset-global, so every slug is unique per run.
+const { projectId, dataset } = liveTarget;
 const run = Date.now().toString(36);
-
-const ids = {
-  policy: `byo-policy-${run}`,
-  preset: `byo-preset-${run}`,
-  application: `byo-application-${run}`,
-};
 const presetSlug = `byo-thumb-${run}`;
 
-const setupDocuments = [
-  {
-    _id: ids.policy,
-    _type: "assetLakePolicy",
+const plan = createSetupPlan({
+  applicationSlug: `byo-${run}`,
+  applicationName: "My app",
+  policy: {
+    slug: `byo-public-${run}`,
     name: "Public images",
-    slug: { _type: "slug", current: `byo-public-images-${run}` },
     allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
     maxFileSizeBytes: 5 * 1024 * 1024,
     requiresReview: false,
   },
-  {
-    _id: ids.preset,
-    _type: "assetLakePreset",
-    name: "Thumbnail",
-    slug: { _type: "slug", current: presetSlug },
-    width: 200,
-    height: 200,
-    fit: "crop",
-    quality: 80,
-    autoFormat: true,
-  },
-  {
-    _id: ids.application,
-    _type: "assetLakeApplication",
-    name: "My app",
-    slug: { _type: "slug", current: `byo-my-app-${run}` },
-    environment: "production",
-    defaultPolicy: { _type: "reference", _ref: ids.policy },
-    presets: [{ _key: "thumb", _type: "reference", _ref: ids.preset }],
-  },
-];
+  presets: [
+    {
+      slug: presetSlug,
+      name: "Thumbnail",
+      width: 200,
+      height: 200,
+      fit: "crop",
+      quality: 80,
+      autoFormat: true,
+    },
+  ],
+});
+const setupIds = planDocumentIds(plan);
 
-const sanity = createClient({
-  projectId: SANITY_PROJECT_ID,
-  dataset,
-  apiVersion: DEFAULT_API_VERSION,
-  token,
-  useCdn: false,
-});
-const assetLake = createAssetLake({
-  projectId: SANITY_PROJECT_ID,
-  dataset,
-  apiVersion: DEFAULT_API_VERSION,
-  token,
-});
+const sanity = createClient({ ...liveTarget, useCdn: false });
+const assetLake = createAssetLake(liveTarget);
 const created: { imageId?: string; assetId?: string } = {};
 
 // The image record references the application, which references the policy and preset, so delete
-// in that order. Each step tolerates "already gone" so a failed run still cleans up.
+// the image first and the setup documents in reverse plan order. Each step tolerates "already gone"
+// so a failed run still cleans up.
 afterAll(async () => {
   const leftovers = [
     created.imageId,
     created.assetId,
-    ids.application,
-    ids.preset,
-    ids.policy,
+    ...setupIds.toReversed(),
   ];
   for (const id of leftovers) {
     if (id) await sanity.delete(id).catch(() => undefined);
@@ -85,18 +56,33 @@ afterAll(async () => {
 });
 
 describe(`bring-your-own-project setup against "${dataset}"`, () => {
-  it("uploads through a freshly created application and serves its preset from the CDN", async () => {
-    const transaction = sanity.transaction();
-    for (const document of setupDocuments)
-      transaction.createIfNotExists(document);
-    await transaction.commit({ visibility: "sync" });
+  it("creates the setup documents once; a second run creates nothing", async () => {
+    await expect(assetLake.setup.ensure(plan)).resolves.toEqual({
+      created: setupIds,
+      existing: [],
+    });
+    await expect(assetLake.setup.ensure(plan)).resolves.toEqual({
+      created: [],
+      existing: setupIds,
+    });
+  });
 
+  it("makes the setup documents readable without a token (public dataset, root-path ids)", async () => {
+    const { token: _token, ...publicTarget } = liveTarget;
+    const tokenless = createClient({ ...publicTarget, useCdn: false });
+    const found = await tokenless.fetch<string[]>("*[_id in $ids]._id", {
+      ids: setupIds,
+    });
+    expect(found.toSorted()).toEqual(setupIds.toSorted());
+  });
+
+  it("uploads through the new application and serves its preset from the CDN", async () => {
     const entity = { type: "user", id: `user-byo-${run}` };
     const image = await assetLake.images.upload({
       body: createPngBytes(400, 400, Date.now() % 251),
       filename: "byo.png",
       contentType: "image/png",
-      applicationId: ids.application,
+      applicationId: plan.application.id,
       purpose: "avatar",
       entity,
       actorId: entity.id,
@@ -106,7 +92,7 @@ describe(`bring-your-own-project setup against "${dataset}"`, () => {
 
     const url = await assetLake.images.url(image.id, { preset: presetSlug });
     expect(new URL(url).host).toBe("cdn.sanity.io");
-    expect(url).toContain(`/images/${SANITY_PROJECT_ID}/${dataset}/`);
+    expect(url).toContain(`/images/${projectId}/${dataset}/`);
     expect(url).toMatch(/w=200&h=200/);
 
     const response = await fetch(url);

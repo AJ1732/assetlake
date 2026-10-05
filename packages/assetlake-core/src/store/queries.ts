@@ -1,4 +1,4 @@
-import { DOCUMENT_TYPES } from "@assetlake/sanity-schema/constants";
+import { DOCUMENT_TYPES } from "../constants";
 
 const IMAGE_VIEW_PROJECTION = `{
   "id": _id,
@@ -64,6 +64,8 @@ export const LATEST_READY_IMAGE_FOR_ENTITY_QUERY = `*[
 export const COUNT_IMAGES_SINCE_QUERY = `count(*[
   _type == "${DOCUMENT_TYPES.image}" && application._ref == $applicationId && uploadedAt >= $since
 ])`;
+
+export const EXISTING_IDS_QUERY = `*[_id in $ids]._id`;
 
 export const COUNT_IMAGES_FOR_ENTITY_QUERY = `count(*[
   _type == "${DOCUMENT_TYPES.image}" && entity.type == $entityType && entity.id == $entityId

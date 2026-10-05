@@ -1,0 +1,48 @@
+{
+  "name": "@assetlake/cli",
+  "version": "0.1.0",
+  "description": "Set up, upload to and check AssetLake in your own Sanity project from the terminal.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AJ1732/sal.git",
+    "directory": "packages/assetlake-cli"
+  },
+  "keywords": [
+    "sanity",
+    "images",
+    "upload",
+    "cli",
+    "assetlake"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "assetlake": "./dist/main.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build:dist": "tsdown",
+    "prepack": "pnpm build:dist"
+  },
+  "dependencies": {
+    "@assetlake/core": "workspace:^",
+    "@sanity/client": "^8.9.0",
+    "file-type": "^22.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "tsdown": "^0.23.0",
+    "typescript": "^5",
+    "vitest": "^5.0.3"
+  }
+}

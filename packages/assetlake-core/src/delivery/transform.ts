@@ -1,9 +1,10 @@
+import { z } from "zod";
+
 import {
   IMAGE_CROP_MODES,
   IMAGE_FIT_MODES,
   PRESET_QUALITY_RANGE,
-} from "@assetlake/sanity-schema/constants";
-import { z } from "zod";
+} from "../constants";
 
 const pixels = z.number().int().positive();
 

@@ -1,13 +1,9 @@
-// Frozen public contract (tag @assetlake/core@0.1.0). B03, B04 and B05 build against these types in
-// parallel; changing them is a contract change (docs/PLAN.md §3). Types and constants only.
-import type {
-  ImageCropMode,
-  ImageFitMode,
-  ImagePurpose,
-  ImageStatus,
-} from "@assetlake/sanity-schema/constants";
+// Public contract. Changing it is a contract change (docs/PLAN.md §3). Types and constants only.
+// 0.2.0 moved the domain constants here from @assetlake/sanity-schema, so the npm package has no
+// Studio dependency.
+import type { ImageCropMode, ImageFitMode, ImagePurpose } from "./constants";
 
-export type { ImageCropMode, ImageFitMode, ImagePurpose, ImageStatus };
+export * from "./constants";
 
 export interface EntityRef {
   type: string;

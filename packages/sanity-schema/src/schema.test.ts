@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import {
   APPLICATION_ENVIRONMENTS,
   DOCUMENT_TYPES,
@@ -8,7 +6,9 @@ import {
   IMAGE_PURPOSES,
   IMAGE_STATUSES,
   TRANSFORMABLE_IMAGE_MIME_TYPES,
-} from "./constants";
+} from "@assetlake/core/contracts";
+import { describe, expect, it } from "vitest";
+
 import { schemaTypes } from "./index";
 
 type FieldShape = {

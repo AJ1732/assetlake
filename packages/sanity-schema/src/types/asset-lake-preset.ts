@@ -1,12 +1,12 @@
-import { CropIcon } from "@sanity/icons/Crop";
-import { defineField, defineType } from "@sanity/types";
-
 import {
   DOCUMENT_TYPES,
   IMAGE_CROP_MODES,
   IMAGE_FIT_MODES,
   PRESET_QUALITY_RANGE,
-} from "../constants";
+} from "@assetlake/core/contracts";
+import { CropIcon } from "@sanity/icons/Crop";
+import { defineField, defineType } from "@sanity/types";
+
 import { positiveInteger } from "./field-rules";
 
 // Declarative delivery rule; @assetlake/core maps it onto @sanity/image-url. Width/height must be

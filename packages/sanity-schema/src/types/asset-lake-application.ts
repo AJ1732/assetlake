@@ -1,7 +1,9 @@
+import {
+  APPLICATION_ENVIRONMENTS,
+  DOCUMENT_TYPES,
+} from "@assetlake/core/contracts";
 import { PackageIcon } from "@sanity/icons/Package";
 import { defineArrayMember, defineField, defineType } from "@sanity/types";
-
-import { APPLICATION_ENVIRONMENTS, DOCUMENT_TYPES } from "../constants";
 
 // Never store secrets here: the dataset is public (handoff §8.1).
 export const assetLakeApplication = defineType({

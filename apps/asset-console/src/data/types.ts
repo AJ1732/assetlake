@@ -1,8 +1,5 @@
+import type { ImagePurpose, ImageStatus } from "@assetlake/core/contracts";
 import type { SanityImageSource } from "@assetlake/core/url";
-import type {
-  ImagePurpose,
-  ImageStatus,
-} from "@assetlake/sanity-schema/constants";
 
 // Shapes returned by the GROQ projections in ./queries. Every field is nullable because the
 // projections dereference image.asset-> and application->, which can be missing.

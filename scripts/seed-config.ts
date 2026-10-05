@@ -1,12 +1,14 @@
-import { DEFAULT_API_VERSION, DEFAULT_DATASET } from "../project.ts";
-
-export type SeedMode = "create-if-missing" | "reset";
+import type { SetupMode } from "@assetlake/core";
+import {
+  DEFAULT_API_VERSION,
+  DEFAULT_DATASET,
+} from "@assetlake/sanity-schema/project";
 
 export interface SeedConfig {
   dataset: string;
   apiVersion: string;
   token: string;
-  mode: SeedMode;
+  mode: SetupMode;
 }
 
 // Sanity dataset naming rule: 1-64 chars, a-z 0-9 - _, starts and ends with a letter or digit.

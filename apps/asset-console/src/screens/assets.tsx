@@ -1,7 +1,4 @@
-import {
-  IMAGE_PURPOSES,
-  IMAGE_STATUSES,
-} from "@assetlake/sanity-schema/constants";
+import { IMAGE_PURPOSES, IMAGE_STATUSES } from "@assetlake/core/contracts";
 import { Button, Card, Flex, Grid, Select, Stack, Text } from "@sanity/ui";
 import { useState } from "react";
 

@@ -1,5 +1,5 @@
+import { DOCUMENT_TYPES } from "@assetlake/core/contracts";
 import type { SanityImageSource } from "@assetlake/core/url";
-import { DOCUMENT_TYPES } from "@assetlake/sanity-schema/constants";
 import { useDocumentProjection } from "@sanity/sdk-react";
 import {
   Badge,

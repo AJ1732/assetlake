@@ -15,6 +15,9 @@
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.mts",
     "test:e2e": "pnpm --filter @assetlake/demo-web test:e2e",
+    "test:pack": "vitest run --config vitest.pack.config.mts",
+    "seed": "tsx --env-file-if-exists=.env.local scripts/seed-demo.ts",
+    "seed:reset": "tsx --env-file-if-exists=.env.local scripts/seed-demo.ts --reset",
     "scan:secrets": "./scripts/scan-secrets.sh",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
@@ -25,6 +28,8 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@assetlake/core": "workspace:*",
+    "@assetlake/sanity-schema": "workspace:*",
     "@commitlint/cli": "^20.4.4",
     "@commitlint/config-conventional": "^20.4.4",
     "@next/eslint-plugin-next": "16.2.6",
@@ -43,6 +48,7 @@
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "railway": "3.12.0",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.3"
   }

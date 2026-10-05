@@ -84,6 +84,7 @@ const eslintConfig = defineConfig([
     files: [
       "packages/assetlake-core/src/url.ts",
       "packages/assetlake-core/src/contracts.ts",
+      "packages/assetlake-core/src/constants.ts",
       "packages/assetlake-core/src/delivery/image-urls.ts",
     ],
     rules: {

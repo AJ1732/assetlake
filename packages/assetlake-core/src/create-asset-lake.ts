@@ -16,14 +16,16 @@ import { normalizeImage, toResultStatus } from "./images/normalize";
 import { type Clock, createUploadImage } from "./images/upload-image";
 import { createJsonLogger, type Logger } from "./logging/logger";
 import { createPresetResolver } from "./presets/preset-resolver";
+import type { SetupPlan } from "./setup/setup-plan";
 import type { AssetLakeStore } from "./store/asset-lake-store";
 import {
   createSanityStore,
   createSanityWriteClient,
 } from "./store/sanity-store";
+import type { SetupMode, SetupStore } from "./store/setup-store";
 
 export interface AssetLakeOverrides {
-  store?: AssetLakeStore;
+  store?: AssetLakeStore & SetupStore;
   logger?: Logger;
   clock?: Clock;
   ids?: IdGenerator;
@@ -123,6 +125,13 @@ export function createAssetLake(
     presets: {
       get: presets.get,
       list: presets.list,
+    },
+    setup: {
+      ensure: (
+        plan: SetupPlan,
+        { mode = "create-if-missing" }: { mode?: SetupMode } = {},
+      ) => store.ensureSetup(plan, mode),
+      missing: (plan: SetupPlan) => store.findMissingSetup(plan),
     },
   };
 }

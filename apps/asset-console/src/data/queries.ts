@@ -1,4 +1,4 @@
-import { DOCUMENT_TYPES } from "@assetlake/sanity-schema/constants";
+import { DOCUMENT_TYPES } from "@assetlake/core/contracts";
 
 // Mirrors IMAGE_VIEW_PROJECTION in @assetlake/core/src/store/queries.ts. URL, size and dimensions
 // live on the dereferenced sanity.imageAsset, never on the AssetLake record (handoff §8.4).

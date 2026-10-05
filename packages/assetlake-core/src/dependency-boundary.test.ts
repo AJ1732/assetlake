@@ -2,9 +2,10 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-// Architecture lock §6.3: core stays framework-neutral.
+// Architecture lock §6.3: core stays framework-neutral. sanity-schema depends on core (for the
+// constants), so a dependency back would be a workspace cycle and would put Studio in the npm package.
 const FORBIDDEN_DEPENDENCY =
-  /^(next|react|react-dom|express)$|^@next\/|^@sanity\/sdk-react$/;
+  /^(next|react|react-dom|express)$|^@next\/|^@sanity\/sdk-react$|^@assetlake\/sanity-schema$/;
 
 type PackageManifest = {
   dependencies?: Record<string, string>;
@@ -17,7 +18,7 @@ const manifest = JSON.parse(
 ) as PackageManifest;
 
 describe("@assetlake/core package boundary", () => {
-  it("declares no framework, UI, or HTTP-server dependency", () => {
+  it("declares no framework, UI, HTTP-server, or Studio-schema dependency", () => {
     const declared = Object.keys({
       ...manifest.dependencies,
       ...manifest.devDependencies,

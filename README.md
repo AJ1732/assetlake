@@ -61,12 +61,13 @@ The demo adds a passcode session (HMAC-signed `HttpOnly` cookie), 5 uploads per 
 
 ## Workspace
 
-| Path                      | Package                    | Role                                                                                                            |
-| ------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `packages/assetlake-core` | `@assetlake/core`          | The SDK: framework-neutral upload, policy, presets, URL building ([README](packages/assetlake-core/README.md))  |
-| `packages/sanity-schema`  | `@assetlake/sanity-schema` | Content model, schema deploy, TypeGen, seed                                                                     |
-| `apps/demo-web`           | `@assetlake/demo-web`      | Next.js 16 demo: Route Handler upload boundary, playground, live feed, docs ([README](apps/demo-web/README.md)) |
-| `apps/asset-console`      | `@assetlake/asset-console` | Sanity App SDK operations console ([README](apps/asset-console/README.md))                                      |
+| Path                      | Package                    | Role                                                                                                                 |
+| ------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `packages/assetlake-core` | `@assetlake/core`          | The SDK on npm: framework-neutral upload, policy, presets, setup, URLs ([README](packages/assetlake-core/README.md)) |
+| `packages/assetlake-cli`  | `@assetlake/cli`           | `assetlake init / upload / url / doctor` for your own project ([README](packages/assetlake-cli/README.md))           |
+| `packages/sanity-schema`  | `@assetlake/sanity-schema` | Content model, schema deploy, TypeGen (constants come from core)                                                     |
+| `apps/demo-web`           | `@assetlake/demo-web`      | Next.js 16 demo: Route Handler upload boundary, playground, live feed, docs ([README](apps/demo-web/README.md))      |
+| `apps/asset-console`      | `@assetlake/asset-console` | Sanity App SDK operations console ([README](apps/asset-console/README.md))                                           |
 
 Stack: Node 24, pnpm workspaces, TypeScript, Next.js 16 (App Router), React 19, `@sanity/client` 8, Sanity App SDK 3, Vitest, Playwright. demo-web runs on Railway (`.railway/railway.ts`); the console is deployed with `sanity deploy`.
 
@@ -88,6 +89,8 @@ The build, the live lane, E2E and the dev server need a Sanity project and an Ed
 ln -s ../../.env.local apps/demo-web/.env.local
 pnpm build
 SANITY_DATASET=test pnpm test:live                 # eval lane against a real dataset
+pnpm test:pack                                     # pack lane: npm-installed tarballs, plain node
+pnpm seed                                          # demo setup documents (create-if-missing)
 ASSETLAKE_DEMO_PASSCODE=... pnpm test:e2e          # Playwright; stop pnpm dev first
 pnpm dev                                           # http://localhost:3000
 SANITY_WRITE_TOKEN=... ASSETLAKE_SESSION_SECRET=... ./scripts/scan-secrets.sh   # secret scan, after pnpm build
@@ -98,7 +101,8 @@ To point these at your own project rather than the demo's, see "Use AssetLake wi
 ## Tests
 
 - **Gate lane** (`pnpm test`, runs in pre-commit): about 420 Vitest tests over core, the schema, demo-web's HTTP and session layer, the console and the secret scanner. It uses in-memory fakes and generated images, with no network and no binary fixtures.
-- **Live lane** (`pnpm test:live`): runs against the `test` dataset. It covers the full upload chain (upload, record, transform, CDN fetch, idempotent replay, delete), the seed, and the bring-your-own-project setup.
+- **Live lane** (`pnpm test:live`): runs against the `test` dataset. It covers the full upload chain (upload, record, transform, CDN fetch, idempotent replay, delete), the bring-your-own-project setup, and the CLI end to end (`init` twice, `doctor`, `upload`, `url`).
+- **Pack lane** (`pnpm test:pack`): packs `@assetlake/core` and `@assetlake/cli` the way `pnpm publish` does, installs the tarballs with npm in an empty project, imports every core subpath with plain `node`, runs the `assetlake` bin, and secret-scans the tarballs.
 - **E2E** (`pnpm test:e2e`): Playwright. The UI lane writes to `production` (what `/live` shows) and the API lane writes to `test`. It checks that every image request goes to `cdn.sanity.io`, and that uploads appear on `/live` without a reload, including when `/live` is opened after the upload. Every test upload is deleted afterwards.
 - **Secret scan** (`scripts/scan-secrets.sh`): checks the repo and the browser-served build output for the token values and token-shaped strings. It prints file paths only.
 
@@ -126,9 +130,8 @@ To point these at your own project rather than the demo's, see "Use AssetLake wi
 12. The quota floor counters are in process. demo-web runs one replica, and the counters reset on every redeploy (the Sanity-side counts still apply).
 13. The console has no Playwright coverage, because it runs inside the authenticated Sanity Dashboard.
 14. `/playground` makes about 9 small Sanity reads per render. Batching them needs a core API change.
-15. Presets resolve by slug across a dataset, not per application.
+15. Presets resolve by slug across a dataset, not per application. This is by design (see the bring-your-own section).
 16. On the custom domain, CSRF protection (`SameSite=Lax`) relies on every `*.ejemeniboi.com` subdomain being trusted.
-17. `@assetlake/core` is not on npm yet (see below).
 
 ## Use AssetLake with your own Sanity project
 
@@ -139,65 +142,31 @@ AssetLake is not a hosted service. Your Sanity project is the bucket: your serve
 
 ### 1. Project, dataset, token
 
-- A Sanity project with a **public** dataset (AssetLake is for public images).
-- A token with the **Editor** role, created in [sanity.io/manage](https://www.sanity.io/manage) → API → Tokens. Keep it in your server's environment only. Never prefix it with `NEXT_PUBLIC_` and never send it to a browser.
+- A Sanity project with a dataset. AssetLake is for public images: asset URLs are public whatever the dataset's visibility.
+- A token with the **Editor** role, created in [sanity.io/manage](https://www.sanity.io/manage) under API, Tokens. Keep it in your server's environment only. Never prefix it with `NEXT_PUBLIC_` and never send it to a browser.
 
-### 2. Create a policy, a preset and an application
+### 2. Create the setup documents
 
-Uploads resolve an application, then its default policy. Presets are looked up by slug across the dataset. Run this once from a trusted machine (Node 24, `npm i @sanity/client`):
+Uploads resolve an application, then its default policy; URLs resolve presets by slug. The CLI creates all three (Node 24):
 
-```js
-// setup-assetlake.mjs: SANITY_PROJECT_ID=... SANITY_DATASET=... SANITY_WRITE_TOKEN=... node setup-assetlake.mjs
-import { createClient } from "@sanity/client";
+```bash
+export ASSETLAKE_TOKEN=...          # Editor token; the CLI never takes it as a flag
+export ASSETLAKE_PROJECT_ID=abc123
+export ASSETLAKE_DATASET=production
 
-const client = createClient({
-  projectId: process.env.SANITY_PROJECT_ID,
-  dataset: process.env.SANITY_DATASET,
-  apiVersion: "2026-10-04",
-  token: process.env.SANITY_WRITE_TOKEN,
-  useCdn: false,
-});
-const slug = (current) => ({ _type: "slug", current });
-const ref = (id) => ({ _type: "reference", _ref: id });
-
-// No "." in ids: dotted ids are private paths that tokenless reads of a public dataset can't see.
-await client
-  .transaction()
-  .createIfNotExists({
-    _id: "my-policy",
-    _type: "assetLakePolicy",
-    name: "Public images",
-    slug: slug("public-images"),
-    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
-    maxFileSizeBytes: 5 * 1024 * 1024,
-    requiresReview: false,
-  })
-  .createIfNotExists({
-    _id: "my-preset-thumb",
-    _type: "assetLakePreset",
-    name: "Thumbnail",
-    slug: slug("thumb"),
-    width: 200,
-    height: 200,
-    fit: "crop",
-    quality: 80,
-    autoFormat: true,
-  })
-  .createIfNotExists({
-    _id: "my-application",
-    _type: "assetLakeApplication",
-    name: "My app",
-    slug: slug("my-app"),
-    environment: "production",
-    defaultPolicy: ref("my-policy"),
-    presets: [{ _key: "thumb", ...ref("my-preset-thumb") }],
-  })
-  .commit({ visibility: "sync" });
+npx @assetlake/cli init --slug my-app   # policy, 4 presets, assetlake-application-my-app
+npx @assetlake/cli doctor --slug my-app # token, write access, visibility, setup, CORS
 ```
 
-Deploying the schema in `packages/sanity-schema` is optional. The Content Lake doesn't need it; it's for Studio editing, TypeGen and the console.
+`init` is idempotent and never overwrites existing documents, so presets edited later in the Studio survive a rerun. To do the same from code, use `createSetupPlan` and `assetLake.setup.ensure` (core README, "Set up a project").
+
+**Presets are dataset-global.** A preset slug resolves across the whole dataset, and preset ids are `assetlake-preset-<slug>`, so every application in a dataset shares the `avatar` preset. Give presets distinct slugs when apps need different sizes. Deploying the schema in `packages/sanity-schema` is optional: the Content Lake doesn't need it; it's for Studio editing, TypeGen and the console.
 
 ### 3. Upload from your backend
+
+```bash
+npm i @assetlake/core
+```
 
 ```ts
 import { createAssetLake } from "@assetlake/core";
@@ -213,18 +182,14 @@ const image = await assetLake.images.upload({
   body: bytes, // Uint8Array
   filename: "photo.png",
   contentType: "image/png",
-  applicationId: "my-application",
+  applicationId: "assetlake-application-my-app",
   purpose: "avatar",
   entity: { type: "user", id: userId },
   actorId: userId,
 });
-const thumbUrl = await assetLake.images.url(image.id, { preset: "thumb" });
+const avatarUrl = await assetLake.images.url(image.id, { preset: "avatar" });
 ```
 
-Any server works the same way: Express, Fastify, Next.js Route Handlers, workers, scripts. Browsers build variant URLs with `@assetlake/core/url` and never need the token. See [`packages/assetlake-core/README.md`](packages/assetlake-core/README.md) for the full API.
+Any server works the same way: Express, Fastify, Next.js Route Handlers, workers, scripts. Browsers build variant URLs with `@assetlake/core/url` and never need the token. Or upload from a terminal: `npx @assetlake/cli upload ./photo.png --app assetlake-application-my-app --preset avatar`. See the [core](packages/assetlake-core/README.md) and [CLI](packages/assetlake-cli/README.md) READMEs for the full API.
 
-`packages/assetlake-core/tests/live/byo-project.live.test.ts` runs steps 2 and 3 against a real dataset in the live lane (`pnpm test:live`).
-
-### Install today, and what's next
-
-`@assetlake/core` is not on npm yet. Today you clone this repo and use the workspace package. Next on the roadmap: `@assetlake/core` on npm, plus an `@assetlake/cli` (`assetlake init` creates the documents above, `assetlake upload <file>` prints the CDN URL, `assetlake doctor` checks the token, dataset and CORS).
+The live lane runs this path against a real dataset (`packages/assetlake-core/tests/live/byo-project.live.test.ts` and `packages/assetlake-cli/tests/live/cli.live.test.ts`), and the pack lane installs the packed tarballs in an empty project.

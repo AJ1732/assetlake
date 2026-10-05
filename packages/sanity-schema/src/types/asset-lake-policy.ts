@@ -1,3 +1,7 @@
+import {
+  DOCUMENT_TYPES,
+  TRANSFORMABLE_IMAGE_MIME_TYPES,
+} from "@assetlake/core/contracts";
 import { LockIcon } from "@sanity/icons/Lock";
 import {
   defineArrayMember,
@@ -6,7 +10,6 @@ import {
   type ValidationContext,
 } from "@sanity/types";
 
-import { DOCUMENT_TYPES, TRANSFORMABLE_IMAGE_MIME_TYPES } from "../constants";
 import { positiveInteger } from "./field-rules";
 
 const notBelowMinimum =

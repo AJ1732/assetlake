@@ -1,20 +1,62 @@
 {
   "name": "@assetlake/core",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.2.0",
+  "description": "Policy-checked image uploads to your own Sanity Content Lake, with named presets served from cdn.sanity.io.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AJ1732/sal.git",
+    "directory": "packages/assetlake-core"
+  },
+  "keywords": [
+    "sanity",
+    "images",
+    "upload",
+    "cdn",
+    "content-lake"
+  ],
   "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=24"
+  },
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": "./src/index.ts",
     "./url": "./src/url.ts",
     "./contracts": "./src/contracts.ts",
     "./testing": "./src/testing.ts"
   },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./url": {
+        "types": "./dist/url.d.ts",
+        "default": "./dist/url.js"
+      },
+      "./contracts": {
+        "types": "./dist/contracts.d.ts",
+        "default": "./dist/contracts.js"
+      },
+      "./testing": {
+        "types": "./dist/testing.d.ts",
+        "default": "./dist/testing.js"
+      }
+    }
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:dist": "tsdown",
+    "prepack": "pnpm build:dist"
   },
   "dependencies": {
-    "@assetlake/sanity-schema": "workspace:*",
     "@sanity/client": "^8.9.0",
     "@sanity/image-url": "^2.1.1",
     "file-type": "^22.1.1",
@@ -22,6 +64,7 @@
   },
   "devDependencies": {
     "@types/node": "^24",
+    "tsdown": "^0.23.0",
     "typescript": "^5",
     "vitest": "^5.0.3"
   }

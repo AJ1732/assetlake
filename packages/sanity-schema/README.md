@@ -1,6 +1,6 @@
 # @assetlake/sanity-schema
 
-AssetLake content model, schema deployment config, TypeGen output, and the deterministic seed.
+AssetLake content model, schema deployment config and TypeGen output.
 
 | Type                   | Role                                                                                         |
 | ---------------------- | -------------------------------------------------------------------------------------------- |
@@ -14,25 +14,27 @@ AssetLake content model, schema deployment config, TypeGen output, and the deter
 ## Subpath exports
 
 - `@assetlake/sanity-schema`: schema types. Helpers come from `@sanity/types` (re-exported unchanged by `sanity`), so tests and core-adjacent code never load the Studio bundle.
-- `@assetlake/sanity-schema/constants`: enums and document type names. No `sanity` import, safe for `@assetlake/core`.
-- `@assetlake/sanity-schema/project`: public project id and defaults.
+- `@assetlake/sanity-schema/project`: the demo's public project id and defaults.
+
+Enums and document type names live in `@assetlake/core/contracts` (moved there in B10 so the npm package has no Studio dependency). This package depends on core, never the reverse.
 
 ## Ids
 
-Every seeded or AssetLake-created document id uses `assetlake-<type>-<slug-or-hash>` with no `.`. Sanity treats dotted ids as private paths that tokenless clients cannot read (sanity.io/docs/content-lake/ids).
+Every seeded or AssetLake-created document id uses `assetlake-<type>-<slug-or-hash>` with no `.`. Sanity treats dotted ids as private paths that tokenless clients cannot read (sanity.io/docs/content-lake/ids). Setup document shapes are defined once, in core's `toSetupDocuments`.
 
 ## Scripts
 
-Secrets come from the repo-root `.env.local` (`SANITY_WRITE_TOKEN`, optional `SANITY_DATASET`, `SANITY_API_VERSION`).
-
 ```bash
-pnpm --filter @assetlake/sanity-schema test           # gate: schema shape, seed, config parsing
+pnpm --filter @assetlake/sanity-schema test           # gate: schema shape
 SANITY_AUTH_TOKEN=<deploy token> pnpm --filter @assetlake/sanity-schema schema:deploy
 pnpm --filter @assetlake/sanity-schema schema:list
 pnpm --filter @assetlake/sanity-schema typegen        # schema.json + src/sanity.types.ts
-pnpm --filter @assetlake/sanity-schema seed           # create-if-missing: keeps live console edits
-pnpm --filter @assetlake/sanity-schema seed:reset     # restores seeded preset values
-SANITY_DATASET=test pnpm --filter @assetlake/sanity-schema seed
 ```
 
-Eval lane (root): `pnpm test:live` seeds the `test` dataset twice and checks idempotency and tokenless readability.
+The demo seed moved to the repo root in B10 (`scripts/seed-demo.ts`, run with `tsx`). It writes the campus-demo plan through core's setup module, the same code path as `assetlake init`. Secrets come from the root `.env.local` (`SANITY_WRITE_TOKEN`, optional `SANITY_DATASET`, `SANITY_API_VERSION`).
+
+```bash
+pnpm seed                      # create-if-missing: keeps live console edits
+pnpm seed:reset                # restores the seeded preset values
+SANITY_DATASET=test pnpm seed
+```

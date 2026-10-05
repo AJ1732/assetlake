@@ -5,7 +5,6 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./constants": "./src/constants.ts",
     "./project": "./src/project.ts"
   },
   "scripts": {
@@ -13,12 +12,10 @@
     "test": "vitest run",
     "schema:deploy": "sanity schemas deploy",
     "schema:list": "sanity schemas list",
-    "typegen": "sanity schemas extract --force --enforce-required-fields && sanity typegen generate",
-    "seed": "node --env-file-if-exists=../../.env.local src/seed/run-seed.ts",
-    "seed:reset": "node --env-file-if-exists=../../.env.local src/seed/run-seed.ts --reset"
+    "typegen": "sanity schemas extract --force --enforce-required-fields && sanity typegen generate"
   },
   "dependencies": {
-    "@sanity/client": "^8.9.0",
+    "@assetlake/core": "workspace:*",
     "@sanity/icons": "^5.2.3",
     "@sanity/types": "^6.17.0",
     "react": "19.2.4",

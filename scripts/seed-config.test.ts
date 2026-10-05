@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_API_VERSION, DEFAULT_DATASET } from "../project";
 import { readSeedConfig } from "./seed-config";
 
 const TOKEN = "sk-test-not-a-real-token";
@@ -14,8 +13,8 @@ describe("readSeedConfig", () => {
 
   it("defaults to the production dataset, pinned api version, and non-destructive mode", () => {
     expect(readSeedConfig({ SANITY_WRITE_TOKEN: TOKEN }, [])).toEqual({
-      dataset: DEFAULT_DATASET,
-      apiVersion: DEFAULT_API_VERSION,
+      dataset: "production",
+      apiVersion: "2026-10-04",
       token: TOKEN,
       mode: "create-if-missing",
     });

@@ -1,16 +1,12 @@
-import {
-  DEFAULT_API_VERSION,
-  SANITY_PROJECT_ID,
-} from "@assetlake/sanity-schema/project";
 import { createClient } from "@sanity/client";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { createAssetLake } from "../../src/create-asset-lake";
 import { createPngBytes } from "../../src/testing/image-fixtures";
+import { liveTarget } from "./live-target";
 
 // Eval lane (handoff §21.2) against the synthetic `test` dataset, never production.
-const dataset = process.env.SANITY_TEST_DATASET ?? "test";
-const token = process.env.SANITY_WRITE_TOKEN ?? "";
+const { dataset } = liveTarget;
 const APPLICATION_ID = "assetlake-application-campus-demo";
 const entity = { type: "user", id: `user-live-${Date.now()}` };
 
@@ -24,19 +20,8 @@ async function timed<T>(step: string, run: () => Promise<T>): Promise<T> {
   }
 }
 
-const assetLake = createAssetLake({
-  projectId: SANITY_PROJECT_ID,
-  dataset,
-  apiVersion: DEFAULT_API_VERSION,
-  token,
-});
-const sanity = createClient({
-  projectId: SANITY_PROJECT_ID,
-  dataset,
-  apiVersion: DEFAULT_API_VERSION,
-  token,
-  useCdn: false,
-});
+const assetLake = createAssetLake(liveTarget);
+const sanity = createClient({ ...liveTarget, useCdn: false });
 const created: { imageId?: string; assetId?: string } = {};
 
 afterAll(async () => {

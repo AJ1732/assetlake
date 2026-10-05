@@ -1,11 +1,11 @@
-import type { ImageTransform } from "@assetlake/core/url";
 import {
   IMAGE_CROP_MODES,
   IMAGE_FIT_MODES,
   type ImageCropMode,
   type ImageFitMode,
   PRESET_QUALITY_RANGE,
-} from "@assetlake/sanity-schema/constants";
+} from "@assetlake/core/contracts";
+import type { ImageTransform } from "@assetlake/core/url";
 
 import type { PresetFields, PresetRow } from "./types";
 

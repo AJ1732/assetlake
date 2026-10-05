@@ -1,4 +1,5 @@
-// Framework-free on purpose: @assetlake/core imports this subpath and must not pull in `sanity` or React.
+// No imports on purpose: contracts.ts re-exports this file, and contracts ships to browsers through
+// @assetlake/core/url and the console. @assetlake/sanity-schema builds its Studio schema from it.
 
 export const DOCUMENT_TYPES = {
   application: "assetLakeApplication",

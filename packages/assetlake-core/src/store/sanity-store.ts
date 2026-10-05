@@ -1,4 +1,3 @@
-import { DOCUMENT_TYPES } from "@assetlake/sanity-schema/constants";
 import {
   createClient,
   type SanityClient,
@@ -6,7 +5,9 @@ import {
 } from "@sanity/client";
 
 import type { AssetLakeConfig } from "../client/config";
+import { DOCUMENT_TYPES } from "../constants";
 import { hasStatusCode } from "../errors/asset-lake-error";
+import { planDocumentIds, type SetupPlan } from "../setup/setup-plan";
 import type {
   AssetLakeStore,
   NewImageRecord,
@@ -16,12 +17,15 @@ import {
   APPLICATION_BY_ID_QUERY,
   COUNT_IMAGES_FOR_ENTITY_QUERY,
   COUNT_IMAGES_SINCE_QUERY,
+  EXISTING_IDS_QUERY,
   IMAGE_BY_ID_QUERY,
   LATEST_READY_IMAGE_FOR_ENTITY_QUERY,
   POLICY_BY_ID_QUERY,
   PRESET_BY_SLUG_QUERY,
   PRESETS_QUERY,
 } from "./queries";
+import { toSetupDocuments } from "./setup-documents";
+import { type SetupStore, toSetupResult } from "./setup-store";
 
 const CONFLICT = 409;
 
@@ -73,7 +77,17 @@ function toDocument(record: NewImageRecord) {
   };
 }
 
-export function createSanityStore(client: SanityClient): AssetLakeStore {
+export function createSanityStore(
+  client: SanityClient,
+): AssetLakeStore & SetupStore {
+  async function findMissingSetup(plan: SetupPlan): Promise<string[]> {
+    const ids = planDocumentIds(plan);
+    const found = new Set(
+      await client.fetch<string[]>(EXISTING_IDS_QUERY, { ids }),
+    );
+    return ids.filter((id) => !found.has(id));
+  }
+
   return {
     findApplication: (id) => client.fetch(APPLICATION_BY_ID_QUERY, { id }),
     findPolicy: (id) => client.fetch(POLICY_BY_ID_QUERY, { id }),
@@ -125,6 +139,24 @@ export function createSanityStore(client: SanityClient): AssetLakeStore {
         if (hasStatusCode(error, CONFLICT)) return "referenced";
         throw error;
       }
+    },
+
+    findMissingSetup,
+
+    // One transaction, so a partial setup (an application pointing at a missing policy) can't
+    // happen. The id check runs first only to report created vs existing.
+    async ensureSetup(plan, mode) {
+      const missing = new Set(await findMissingSetup(plan));
+      const transaction = client.transaction();
+      for (const document of toSetupDocuments(plan)) {
+        if (mode === "reset") {
+          transaction.createOrReplace(document);
+        } else {
+          transaction.createIfNotExists(document);
+        }
+      }
+      await transaction.commit({ visibility: "sync" });
+      return toSetupResult(planDocumentIds(plan), missing);
     },
   };
 }

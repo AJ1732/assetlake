@@ -5,9 +5,9 @@ import {
   type ApiSuccess,
   type AssetLakeImageResult,
   IDEMPOTENCY_HEADER,
+  IMAGE_PURPOSES,
   UPLOAD_FORM_FIELDS,
 } from "@assetlake/core/contracts";
-import { IMAGE_PURPOSES } from "@assetlake/sanity-schema/constants";
 import { z } from "zod";
 
 import { failure, toFailureResponse } from "../http-errors";

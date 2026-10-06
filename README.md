@@ -86,6 +86,8 @@ corepack enable
 pnpm install
 pnpm check         # lint + typecheck + format check
 pnpm test          # gate lane: Vitest, every package, no network
+pnpm test:slow     # slow lane: secret-scanner script, ESLint config and typed lint
+pnpm typecheck:examples  # typechecks examples/* against the packed workspace core
 ```
 
 The build, the live lane, E2E and the dev server need a Sanity project and an Editor token. `next build` imports the server env module, which fails fast when variables are missing. Copy `.env.example` to `.env.local` at the repo root, fill it in, and link it for Next, which only reads env files from the app directory:
@@ -106,7 +108,9 @@ To point these at your own project rather than the demo's, see "Use AssetLake wi
 
 ## Tests
 
-- **Gate lane** (`pnpm test`, runs in pre-commit): about 420 Vitest tests over core, the schema, demo-web's HTTP and session layer, the console and the secret scanner. It uses in-memory fakes and generated images, with no network and no binary fixtures.
+- **CI** (`.github/workflows/ci.yml`, every push to `main` or `dev` and every PR): job `gate` runs `pnpm check`, `pnpm test` and `pnpm test:slow` with no secrets, and is the required check on `main`. Job `examples` typechecks both examples against the packed core. `.github/workflows/lanes.yml` runs the pack, example, live and API E2E lanes nightly and on demand against `test`, with secrets held by the `sanity-test` environment.
+- **Gate lane** (`pnpm test`): about 650 Vitest tests over core, the schema, demo-web's HTTP and session layer, the console, the CLI and the review workflow. It uses in-memory fakes and generated images, with no network and no binary fixtures. The pre-commit hook runs lint-staged plus `vitest related` on the staged files only; CI runs the full suite.
+- **Slow lane** (`pnpm test:slow`): secret-free tests that need seconds rather than milliseconds: the secret scanner's shell script against temp git repos, and the ESLint config (Next rules scoped to demo-web, the `useEffect` ban in `apps/`, type-aware `no-floating-promises` and `no-misused-promises`).
 - **Live lane** (`pnpm test:live`): runs against the `test` dataset. It covers the full upload chain (upload, record, transform, CDN fetch, idempotent replay, delete), the bring-your-own-project setup, the CLI end to end (`init` twice, `doctor`, `upload`, `url`), and the review workflow (hold, claim, approve or reject, drain, and a check that workflow documents stay out of tokenless reads).
 - **Pack lane** (`pnpm test:pack`): packs `@assetlake/core` and `@assetlake/cli` the way `pnpm publish` does, installs the tarballs with npm in an empty project, imports every core subpath with plain `node`, runs the `assetlake` bin, and secret-scans the tarballs.
 - **Example lane** (`pnpm test:examples`): copies `examples/express` and `examples/nextjs`, installs each with npm and the packed core tarball, typechecks or builds it, starts it, then uploads, builds preset URLs, uploads from a URL and deletes through its HTTP routes against `test`.

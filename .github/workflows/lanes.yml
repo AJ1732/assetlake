@@ -1,0 +1,44 @@
+name: lanes
+
+# Network lanes against the `test` dataset. Secrets live only on the `sanity-test` environment,
+# which is limited to main. Never add pull_request_target: it would hand PR code the secrets.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lanes
+  cancel-in-progress: false
+
+env:
+  HUSKY: 0
+
+jobs:
+  lanes:
+    name: lanes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: sanity-test
+    env:
+      SANITY_DATASET: test
+      SANITY_TEST_DATASET: test
+      SANITY_WRITE_TOKEN: ${{ secrets.SANITY_WRITE_TOKEN }}
+      ASSETLAKE_SESSION_SECRET: ${{ secrets.ASSETLAKE_SESSION_SECRET }}
+      ASSETLAKE_DEMO_PASSCODE: ${{ secrets.ASSETLAKE_DEMO_PASSCODE }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @assetlake/demo-web exec playwright install --with-deps chromium
+      - run: pnpm test:pack
+      - run: pnpm test:examples
+      - run: pnpm test:live
+      - run: pnpm --filter @assetlake/demo-web test:e2e:api

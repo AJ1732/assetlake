@@ -6,11 +6,60 @@ import eslintPluginSimpleImportSort from "eslint-plugin-simple-import-sort";
 import unicornPlugin from "eslint-plugin-unicorn";
 import unusedImportsPlugin from "eslint-plugin-unused-imports";
 
+const DEMO_WEB = "apps/demo-web";
+const CONSOLE = "apps/asset-console";
+const NEXT_APPS = [DEMO_WEB, "examples/nextjs"];
+const NEXT_RULE = /^@next\/next\//;
+
+const isGlobalIgnore = (config) =>
+  Object.keys(config).every((key) => key === "ignores" || key === "name");
+
+function scopeTo(directories, configs) {
+  return configs.map((config) =>
+    isGlobalIgnore(config)
+      ? config
+      : {
+          ...config,
+          files: directories.flatMap((directory) =>
+            (config.files ?? ["**/*"]).map(
+              (pattern) => `${directory}/${pattern}`,
+            ),
+          ),
+        },
+  );
+}
+
+// The console is React on Vite, not Next: it keeps Next's React, hooks, a11y and import rules
+// (same plugin instances, so no second copy can conflict) without the @next/next ones.
+function withoutNextRules(config) {
+  const { "@next/next": _next, ...plugins } = config.plugins;
+  const rules = Object.fromEntries(
+    Object.entries(config.rules).filter(([name]) => !NEXT_RULE.test(name)),
+  );
+  return { ...config, name: "react (no next)", plugins, rules };
+}
+
+const nextReactBlock = nextVitals.find(({ name }) => name === "next");
+if (!nextReactBlock)
+  throw new Error(
+    'eslint-config-next no longer has a "next" block; update eslint.config.mjs.',
+  );
+
+const USE_EFFECT_MESSAGE =
+  "Direct useEffect is banned. Derive the value during render, do the work in the event handler, subscribe with useSyncExternalStore, reset with a key, or fetch with a data library.";
+
 const eslintConfig = defineConfig([
-  ...nextVitals,
+  ...scopeTo(NEXT_APPS, nextVitals),
+  ...scopeTo([CONSOLE], [withoutNextRules(nextReactBlock)]),
   ...nextTs,
   {
-    settings: { next: { rootDir: "apps/demo-web/" } },
+    files: NEXT_APPS.map((directory) => `${directory}/**`),
+    settings: {
+      next: { rootDir: NEXT_APPS.map((directory) => `${directory}/`) },
+    },
+    rules: {
+      "@next/next/no-img-element": "warn",
+    },
   },
   {
     files: ["**/*.{js,ts,jsx,tsx,mjs,mts,cjs}"],
@@ -20,7 +69,6 @@ const eslintConfig = defineConfig([
       "unused-imports": unusedImportsPlugin,
     },
     rules: {
-      "@next/next/no-img-element": "warn",
       "unicorn/no-array-callback-reference": "off",
       "unicorn/no-array-for-each": "off",
       "unicorn/no-array-reduce": "off",
@@ -39,14 +87,13 @@ const eslintConfig = defineConfig([
         },
       ],
       "unicorn/prefer-node-protocol": "off",
-      // Names that differ only in case collide on macOS's case-insensitive filesystem
-      // (broke typecheck in B04), so every source file is kebab-case.
+      // Names that differ only in case collide on macOS's case-insensitive filesystem (two such
+      // files once broke typecheck), so every source file is kebab-case.
       "unicorn/filename-case": ["error", { case: "kebabCase" }],
       "unicorn/no-array-method-this-argument": "off",
       "unicorn/prefer-spread": "off",
       "simple-import-sort/exports": "error",
       "simple-import-sort/imports": "error",
-      "react-hooks/exhaustive-deps": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "unused-imports/no-unused-imports": "error",
       "unused-imports/no-unused-vars": [
@@ -61,7 +108,75 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    // Architecture lock §6.3: core stays framework-neutral.
+    files: ["apps/**/*.{js,jsx,ts,tsx,mjs,mts}"],
+    rules: {
+      "react-hooks/exhaustive-deps": "off",
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "ImportSpecifier[imported.name='useEffect']",
+          message: USE_EFFECT_MESSAGE,
+        },
+        {
+          selector: "MemberExpression[property.name='useEffect']",
+          message: USE_EFFECT_MESSAGE,
+        },
+      ],
+    },
+  },
+  {
+    // Type-aware rules. projectService finds each file's nearest tsconfig.json; files covered by a
+    // differently named tsconfig name it with `project`.
+    files: [
+      "packages/**/*.{ts,tsx,mts}",
+      `${DEMO_WEB}/**/*.{ts,tsx,mts}`,
+      `${CONSOLE}/src/**/*.{ts,tsx}`,
+    ],
+    ignores: [`${CONSOLE}/src/**/*.test.ts`],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
+    files: [
+      `${CONSOLE}/src/**/*.test.ts`,
+      `${CONSOLE}/sanity.cli.ts`,
+      `${CONSOLE}/*.config.mts`,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: `${CONSOLE}/tsconfig.node.json`,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
+    files: ["scripts/**/*.{ts,mts}", ".railway/**/*.ts", "sanity.blueprint.ts"],
+    languageOptions: {
+      parserOptions: {
+        project: "tsconfig.tooling.json",
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
+    files: [
+      "packages/**/*.{ts,tsx,mts}",
+      "apps/**/*.{ts,tsx,mts}",
+      "scripts/**/*.{ts,mts}",
+      ".railway/**/*.ts",
+      "sanity.blueprint.ts",
+    ],
+    rules: {
+      "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/no-misused-promises": "error",
+    },
+  },
+  {
+    // core stays framework-neutral so any Node server or framework can use it.
     files: ["packages/assetlake-core/**/*.ts"],
     rules: {
       "no-restricted-imports": [
@@ -115,7 +230,7 @@ const eslintConfig = defineConfig([
   {
     // demo-web code that can reach a browser bundle must not import the write path. Server-only
     // loaders opt out with the *.server.ts suffix (and `import "server-only"`).
-    files: ["apps/demo-web/{components,features,lib/public}/**/*.{ts,tsx}"],
+    files: [`${DEMO_WEB}/{components,features,lib/public}/**/*.{ts,tsx}`],
     ignores: ["**/*.server.{ts,tsx}", "**/*.test.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
@@ -144,15 +259,8 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    // asset-console is a Vite app inside the Sanity Dashboard, not Next: plain <img> is correct.
-    files: ["apps/asset-console/**/*.{ts,tsx}"],
-    rules: {
-      "@next/next/no-img-element": "off",
-    },
-  },
-  {
-    // The console ships to browsers: URL building comes from @assetlake/core/url only (B05 spec).
-    files: ["apps/asset-console/src/**/*.{ts,tsx}"],
+    // The console ships to browsers, so it must never bundle the write client or token path.
+    files: [`${CONSOLE}/src/**/*.{ts,tsx}`],
     ignores: ["**/*.test.ts"],
     rules: {
       "no-restricted-imports": [

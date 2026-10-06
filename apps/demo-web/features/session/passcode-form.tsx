@@ -64,7 +64,11 @@ export function PasscodeForm() {
         session. The passcode is published in the DEV post. A session lasts 24
         hours and allows 5 uploads.
       </p>
-      <form onSubmit={handleSubmit} className="passcode-form" noValidate>
+      <form
+        onSubmit={(event) => void handleSubmit(event)}
+        className="passcode-form"
+        noValidate
+      >
         <label htmlFor="passcode" className="field-label">
           Demo passcode
         </label>

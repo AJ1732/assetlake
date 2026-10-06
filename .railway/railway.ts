@@ -7,7 +7,8 @@ export default defineRailway(() => {
   const demoWeb = service("demo-web", {
     // Repo root, not apps/demo-web: the pnpm workspace install needs the root lockfile.
     // Deploys from main (moved from dev on 2026-10-05). Applying this file sets the trigger branch.
-    source: github("AJ1732/assetlake", { branch: "main" }),
+    // checkSuites: Railway waits for the GitHub checks (the ci workflow's `gate`) to pass first.
+    source: github("AJ1732/assetlake", { branch: "main", checkSuites: true }),
     build: {
       builder: "RAILPACK",
       buildCommand: "pnpm --filter @assetlake/demo-web... build",
@@ -22,7 +23,8 @@ export default defineRailway(() => {
     start: "pnpm --filter @assetlake/demo-web start",
     healthcheck: "/",
     healthcheckTimeout: 120,
-    // The upload quota's in-process counters assume a single replica (SECURITY.md §4).
+    // The upload quota's in-process counters assume a single replica: a second one would double
+    // the per-session and daily limits.
     replicas: 1,
     deploy: { restartPolicyType: "ON_FAILURE", restartPolicyMaxRetries: 3 },
     // Read at import by lib/server/env.ts, so `next build` needs them too. Railway exposes service

@@ -2,8 +2,6 @@
 // `pnpm release:verify <package>` waits until npm serves the new version as latest.
 // AJ runs the publish itself; this script never publishes, tags or pushes.
 import { spawnSync } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
-import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import {
@@ -16,6 +14,7 @@ import {
   releaseTag,
 } from "./release-plan";
 import { ROOT } from "./support/pack-workspace";
+import { readWorkspaceManifests } from "./support/workspace-manifests";
 
 const POLL_INTERVAL_MS = 15_000;
 const VERIFY_TIMEOUT_MS = 10 * 60_000;
@@ -32,22 +31,14 @@ function git(...gitArguments: string[]): { ok: boolean; output: string } {
 }
 
 function readWorkspaceManifest(name: string): { version: string } {
-  const packagesDirectory = path.join(ROOT, "packages");
-  const directories = readdirSync(packagesDirectory, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name);
-  for (const directory of directories) {
-    const manifest = JSON.parse(
-      readFileSync(
-        path.join(packagesDirectory, directory, "package.json"),
-        "utf8",
-      ),
-    ) as { name: string; version: string; private?: boolean };
-    if (manifest.name !== name) continue;
-    if (manifest.private) throw new Error(`${name} is private.`);
-    return manifest;
-  }
-  throw new Error(`No package named ${name} under packages/.`);
+  const found = readWorkspaceManifests().find(
+    ({ manifest }) => manifest.name === name,
+  );
+  if (!found) throw new Error(`No package named ${name} in the workspace.`);
+  const { manifest, file } = found;
+  if (manifest.private) throw new Error(`${name} is private.`);
+  if (!manifest.version) throw new Error(`${file} has no version.`);
+  return { version: manifest.version };
 }
 
 async function fetchRegistry(name: string) {

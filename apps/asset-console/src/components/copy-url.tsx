@@ -35,7 +35,12 @@ export function CopyUrl({ url }: { url: string }) {
         {url}
       </Text>
       <Flex gap={2}>
-        <Button text="Copy URL" mode="ghost" fontSize={1} onClick={copy} />
+        <Button
+          text="Copy URL"
+          mode="ghost"
+          fontSize={1}
+          onClick={() => void copy()}
+        />
         <Button
           as="a"
           href={url}

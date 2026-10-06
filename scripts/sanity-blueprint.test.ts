@@ -1,28 +1,25 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 
-// The manifest reads its environment at import, so every case loads a fresh copy.
-async function loadBlueprint(environment: Record<string, string | undefined>) {
-  vi.resetModules();
-  for (const [name, value] of Object.entries(environment))
-    vi.stubEnv(name, value);
-  const { default: blueprint } = await import("../sanity.blueprint");
-  const { resources = [] } = blueprint();
+// The default export builds from process.env at import and refuses to build without reviewer ids.
+vi.hoisted(() => vi.stubEnv("ASSETLAKE_REVIEWER_IDS", "gImportTime"));
+
+const { imageReviewBlueprint } = await import("../sanity.blueprint");
+
+afterAll(() => {
+  vi.unstubAllEnvs();
+});
+
+function buildBlueprint(environment: Record<string, string | undefined>) {
+  const { resources = [] } = imageReviewBlueprint(environment)();
   return (name: string) =>
     resources.find((resource) => resource.name === name) as
       | Record<string, unknown>
       | undefined;
 }
 
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
-
 describe("sanity.blueprint.ts", () => {
-  it("gives both Functions an editor robot token scoped to the project", async () => {
-    const resource = await loadBlueprint({
-      ASSETLAKE_REVIEWER_IDS: "gReviewer1",
-      SANITY_PROJECT_ID: undefined,
-    });
+  it("gives both Functions an editor robot token scoped to the project", () => {
+    const resource = buildBlueprint({ ASSETLAKE_REVIEWER_IDS: "gReviewer1" });
 
     expect(resource("assetlake-image-review")).toMatchObject({
       memberships: [
@@ -40,8 +37,8 @@ describe("sanity.blueprint.ts", () => {
       });
   });
 
-  it("drains only production instances and passes the reviewer allowlist", async () => {
-    const resource = await loadBlueprint({
+  it("drains only production instances and passes the reviewer allowlist", () => {
+    const resource = buildBlueprint({
       ASSETLAKE_REVIEWER_IDS: "gReviewer1, gReviewer2",
     });
 
@@ -55,8 +52,8 @@ describe("sanity.blueprint.ts", () => {
     });
   });
 
-  it("starts reviews on create of a production image held in review", async () => {
-    const resource = await loadBlueprint({ ASSETLAKE_REVIEWER_IDS: "g1" });
+  it("starts reviews on create of a production image held in review", () => {
+    const resource = buildBlueprint({ ASSETLAKE_REVIEWER_IDS: "g1" });
 
     expect(resource("image-review-start")).toMatchObject({
       src: "./packages/image-review/functions/image-review-start",
@@ -68,9 +65,21 @@ describe("sanity.blueprint.ts", () => {
     });
   });
 
-  it("refuses to build without reviewer ids", async () => {
-    await expect(
-      loadBlueprint({ ASSETLAKE_REVIEWER_IDS: undefined }),
-    ).rejects.toThrow("ASSETLAKE_REVIEWER_IDS is not set");
+  it("targets the project named in the environment", () => {
+    const resource = buildBlueprint({
+      ASSETLAKE_REVIEWER_IDS: "g1",
+      SANITY_PROJECT_ID: "abc123xy",
+    });
+
+    expect(resource("image-review-start")).toMatchObject({
+      project: "abc123xy",
+      event: { resource: { id: "abc123xy.production" } },
+    });
+  });
+
+  it("refuses to build without reviewer ids", () => {
+    expect(() => buildBlueprint({})).toThrow(
+      "ASSETLAKE_REVIEWER_IDS is not set",
+    );
   });
 });

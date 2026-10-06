@@ -32,7 +32,7 @@ export function CopyButton({
     <Button
       type="button"
       variant="outline"
-      onClick={copy}
+      onClick={() => void copy()}
       className={cn("h-8 px-2.5 font-mono text-xs tabular-nums", className)}
     >
       <span aria-live="polite">

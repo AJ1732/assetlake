@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { type AddressInfo, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -9,16 +9,17 @@ import { createAssetLake } from "@assetlake/core";
 import { createPngBytes } from "@assetlake/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { prepareExample } from "./support/examples";
 import {
   exec,
   isolatedEnvironment,
   packWorkspacePackage,
-  ROOT,
 } from "./support/pack-workspace";
 
 // Example lane: each example runs as a user would run it (a fresh npm install, its own scripts),
 // with the freshly packed core tarball in place of the npm range, against the `test` dataset.
-// URL uploads fetch a cdn.sanity.io URL of the image just uploaded (B11 spike S1).
+// URL uploads fetch a cdn.sanity.io URL of the image just uploaded: the only host the examples
+// allow that is sure to serve an image.
 const run = Date.now().toString(36);
 const LOCAL_USER = `example-${run}`;
 const target = {
@@ -59,23 +60,6 @@ afterAll(async () => {
   }
   if (work) rmSync(work, { recursive: true, force: true });
 });
-
-function prepareExample(name: string): string {
-  const directory = path.join(work, name);
-  cpSync(path.join(ROOT, "examples", name), directory, {
-    recursive: true,
-    filter: (source) =>
-      !["node_modules", ".next", ".env", ".env.local"].includes(
-        path.basename(source),
-      ),
-  });
-  exec(
-    "npm",
-    ["install", "--no-audit", "--no-fund", "--loglevel=error", coreTarball],
-    directory,
-  );
-  return directory;
-}
 
 async function freePort(): Promise<number> {
   const server = createServer();
@@ -138,8 +122,8 @@ describe("examples/express", () => {
   let server: RunningServer | undefined;
 
   beforeAll(async () => {
-    const directory = prepareExample("express");
-    exec("npx", ["tsc", "--noEmit"], directory);
+    const directory = prepareExample("express", work, coreTarball);
+    exec("npm", ["run", "typecheck"], directory);
     server = await startServer(
       "node",
       ["src/server.ts"],
@@ -199,7 +183,7 @@ describe("examples/nextjs", () => {
   let server: RunningServer | undefined;
 
   beforeAll(async () => {
-    const directory = prepareExample("nextjs");
+    const directory = prepareExample("nextjs", work, coreTarball);
     const port = await freePort();
     // Next's own bin, not npx: killing an npx wrapper can orphan the server it started.
     const next = path.join(

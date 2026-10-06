@@ -4,9 +4,10 @@ export default defineConfig({
   test: {
     name: "scripts",
     include: ["*.test.ts"],
-    // The pack and example lanes need the network and minutes, not the gate lane's 2s budget.
+    // These lanes take seconds to minutes (and the network), over the gate lane's 2 s budget.
     exclude: [
       ...configDefaults.exclude,
+      "*.slow.test.ts",
       "*.pack.test.ts",
       "*.examples.test.ts",
     ],

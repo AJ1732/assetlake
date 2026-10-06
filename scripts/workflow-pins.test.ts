@@ -1,30 +1,19 @@
-import { readdirSync, readFileSync } from "node:fs";
-import path from "node:path";
-
 import { describe, expect, it } from "vitest";
 
+import { readWorkspaceManifests } from "./support/workspace-manifests";
+
 // Workflows packages release together and 0.x minors can break, so every @sanity/workflow-*
-// dependency in the workspace must name the same exact version (handoff §16.3).
-const ROOT = path.resolve(import.meta.dirname, "..");
+// dependency in the workspace must name the same exact version.
 const WORKFLOW_PACKAGE = /^@sanity\/workflow-/;
 const EXACT_VERSION = /^\d+\.\d+\.\d+$/;
+const DEPENDENCY_FIELDS = [
+  "dependencies",
+  "devDependencies",
+  "peerDependencies",
+] as const;
 
-type Manifest = Record<string, Record<string, string> | undefined>;
-
-function workspaceManifests(): Array<{ file: string; manifest: Manifest }> {
-  const files = ["apps", "packages"].flatMap((group) =>
-    readdirSync(path.join(ROOT, group), { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => path.join(group, entry.name, "package.json")),
-  );
-  return ["package.json", ...files].map((file) => ({
-    file,
-    manifest: JSON.parse(readFileSync(path.join(ROOT, file), "utf8")),
-  }));
-}
-
-const workflowPins = workspaceManifests().flatMap(({ file, manifest }) =>
-  ["dependencies", "devDependencies", "peerDependencies"].flatMap((field) =>
+const workflowPins = readWorkspaceManifests().flatMap(({ file, manifest }) =>
+  DEPENDENCY_FIELDS.flatMap((field) =>
     Object.entries(manifest[field] ?? {})
       .filter(([name]) => WORKFLOW_PACKAGE.test(name))
       .map(([name, version]) => ({ file, name, version })),

@@ -25,11 +25,12 @@ describe("Railway spec for demo-web", () => {
   });
   afterAll(() => vi.unstubAllEnvs());
 
-  it("deploys from main", () => {
+  it("deploys from main once its GitHub checks pass", () => {
     expect(demoWeb?.source).toMatchObject({
       type: "github",
       repo: "AJ1732/assetlake",
       branch: "main",
+      checkSuites: true,
     });
   });
 

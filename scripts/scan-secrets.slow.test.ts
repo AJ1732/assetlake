@@ -14,6 +14,8 @@ import { fileURLToPath } from "node:url";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { isolatedEnvironment } from "./support/pack-workspace";
+
 const SCRIPT = fileURLToPath(new URL("scan-secrets.sh", import.meta.url));
 
 // Built at runtime so this file never holds a string the scan would flag.
@@ -35,12 +37,6 @@ afterEach(() => {
   vi.unstubAllEnvs();
   rmSync(workspace, { recursive: true, force: true });
 });
-
-// A git hook (pre-commit runs this suite) exports GIT_DIR and GIT_INDEX_FILE for the outer repo.
-// Child processes must not inherit them, or `git init` reinitializes the real repository.
-function isolatedEnvironment() {
-  return { PATH: process.env.PATH, HOME: process.env.HOME };
-}
 
 function plant(relativePath: string, content: string): void {
   const file = path.join(workspace, relativePath);

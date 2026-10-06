@@ -29,6 +29,17 @@ export const IMAGE_LIST_QUERY = `{
   }
 }`;
 
+const REVIEW_QUEUE_LIMIT = 100;
+const RECENTLY_REJECTED_LIMIT = 12;
+
+// Review Queue: oldest first, so the image that has waited longest is reviewed first.
+export const REVIEW_QUEUE_QUERY = `{
+  "pending": *[_type == "${DOCUMENT_TYPES.image}" && status == "review"] | order(uploadedAt asc)[0...${REVIEW_QUEUE_LIMIT}]{${IMAGE_ROW_FIELDS}
+  },
+  "rejected": *[_type == "${DOCUMENT_TYPES.image}" && status == "rejected"] | order(_updatedAt desc)[0...${RECENTLY_REJECTED_LIMIT}]{${IMAGE_ROW_FIELDS}
+  }
+}`;
+
 export const IMAGE_DETAIL_PROJECTION = `{${IMAGE_ROW_FIELDS},
   alt,
   tags,

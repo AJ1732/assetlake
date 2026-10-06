@@ -27,9 +27,11 @@ A Sanity project already has an asset store, an image pipeline, a global CDN, st
 | Image pipeline              | Presets become URL parameters (`w`, `h`, `fit`, `q`, `auto=format`). No thumbnails are stored                                                                                       |
 | Asset CDN                   | Browsers fetch every image from `cdn.sanity.io`. The demo never proxies an image or uses `/_next/image`                                                                             |
 | Live Content API            | The public `/live` feed (tokenless) and the console update without polling                                                                                                          |
-| App SDK                     | AssetLake Console runs inside the Sanity Dashboard: an overview, live assets, asset detail with every preset, and live preset editing with draft and publish                        |
+| App SDK                     | AssetLake Console runs inside the Sanity Dashboard: an overview, live assets, asset detail with every preset, live preset editing with draft and publish, and a Review Queue        |
+| Workflows (early access)    | An image review lifecycle: uploads held for review are claimed, then approved or rejected, in the console's Review Queue ([image-review](packages/image-review/README.md))          |
+| Functions                   | Two Document Functions start a review when a held image is created and drain the workflow's queued effect, which applies the decision through core with a Blueprint robot token     |
 
-Workflows and Functions are not used. They were scoped as follow-up work.
+**Review governs lifecycle, not confidentiality.** A held or rejected image is already public at its `cdn.sanity.io` URL; review only decides whether apps use it.
 
 ## How it works
 
@@ -61,15 +63,16 @@ The demo adds a passcode session (HMAC-signed `HttpOnly` cookie), 5 uploads per 
 
 ## Workspace
 
-| Path                      | Package                    | Role                                                                                                                 |
-| ------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `packages/assetlake-core` | `@assetlake/core`          | The SDK on npm: framework-neutral upload, policy, presets, setup, URLs ([README](packages/assetlake-core/README.md)) |
-| `packages/assetlake-cli`  | `@assetlake/cli`           | `assetlake init / upload / url / delete / doctor` for your own project ([README](packages/assetlake-cli/README.md))  |
-| `packages/sanity-schema`  | `@assetlake/sanity-schema` | Content model, schema deploy, TypeGen (constants come from core)                                                     |
-| `apps/demo-web`           | `@assetlake/demo-web`      | Next.js 16 demo: Route Handler upload boundary, playground, live feed, docs ([README](apps/demo-web/README.md))      |
-| `apps/asset-console`      | `@assetlake/asset-console` | Sanity App SDK operations console ([README](apps/asset-console/README.md))                                           |
-| `examples/express`        | (not in the workspace)     | Minimal Express 5 server on the npm package ([README](examples/express/README.md))                                   |
-| `examples/nextjs`         | (not in the workspace)     | Minimal Next.js 16 app on the npm package ([README](examples/nextjs/README.md))                                      |
+| Path                      | Package                    | Role                                                                                                                                             |
+| ------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `packages/assetlake-core` | `@assetlake/core`          | The SDK on npm: framework-neutral upload, policy, presets, setup, URLs ([README](packages/assetlake-core/README.md))                             |
+| `packages/assetlake-cli`  | `@assetlake/cli`           | `assetlake init / upload / url / delete / doctor` for your own project ([README](packages/assetlake-cli/README.md))                              |
+| `packages/sanity-schema`  | `@assetlake/sanity-schema` | Content model, schema deploy, TypeGen (constants come from core)                                                                                 |
+| `packages/image-review`   | `@assetlake/image-review`  | Workflows definition, effect handler and the two Sanity Functions for the review lifecycle (private) ([README](packages/image-review/README.md)) |
+| `apps/demo-web`           | `@assetlake/demo-web`      | Next.js 16 demo: Route Handler upload boundary, playground, live feed, docs ([README](apps/demo-web/README.md))                                  |
+| `apps/asset-console`      | `@assetlake/asset-console` | Sanity App SDK operations console ([README](apps/asset-console/README.md))                                                                       |
+| `examples/express`        | (not in the workspace)     | Minimal Express 5 server on the npm package ([README](examples/express/README.md))                                                               |
+| `examples/nextjs`         | (not in the workspace)     | Minimal Next.js 16 app on the npm package ([README](examples/nextjs/README.md))                                                                  |
 
 Stack: Node 24, pnpm workspaces, TypeScript, Next.js 16 (App Router), React 19, `@sanity/client` 8, Sanity App SDK 3, Vitest, Playwright. demo-web runs on Railway (`.railway/railway.ts`); the console is deployed with `sanity deploy`.
 
@@ -104,7 +107,7 @@ To point these at your own project rather than the demo's, see "Use AssetLake wi
 ## Tests
 
 - **Gate lane** (`pnpm test`, runs in pre-commit): about 420 Vitest tests over core, the schema, demo-web's HTTP and session layer, the console and the secret scanner. It uses in-memory fakes and generated images, with no network and no binary fixtures.
-- **Live lane** (`pnpm test:live`): runs against the `test` dataset. It covers the full upload chain (upload, record, transform, CDN fetch, idempotent replay, delete), the bring-your-own-project setup, and the CLI end to end (`init` twice, `doctor`, `upload`, `url`).
+- **Live lane** (`pnpm test:live`): runs against the `test` dataset. It covers the full upload chain (upload, record, transform, CDN fetch, idempotent replay, delete), the bring-your-own-project setup, the CLI end to end (`init` twice, `doctor`, `upload`, `url`), and the review workflow (hold, claim, approve or reject, drain, and a check that workflow documents stay out of tokenless reads).
 - **Pack lane** (`pnpm test:pack`): packs `@assetlake/core` and `@assetlake/cli` the way `pnpm publish` does, installs the tarballs with npm in an empty project, imports every core subpath with plain `node`, runs the `assetlake` bin, and secret-scans the tarballs.
 - **Example lane** (`pnpm test:examples`): copies `examples/express` and `examples/nextjs`, installs each with npm and the packed core tarball, typechecks or builds it, starts it, then uploads, builds preset URLs, uploads from a URL and deletes through its HTTP routes against `test`.
 - **E2E** (`pnpm test:e2e`): Playwright. The UI lane writes to `production` (what `/live` shows) and the API lane writes to `test`. It checks that every image request goes to `cdn.sanity.io`, and that uploads appear on `/live` without a reload, including when `/live` is opened after the upload. Every test upload is deleted afterwards.
@@ -117,6 +120,7 @@ To point these at your own project rather than the demo's, see "Use AssetLake wi
 - Responses never include upstream error text. Logs redact token, authorization, secret, password and cookie keys at any depth.
 - The demo passcode is published on purpose. The real limits are the policy, the magic-byte check, per-session and daily quotas, and the request-size limits.
 - The console holds no token. It acts as the signed-in Dashboard user, under that user's project role.
+- Review decisions reach images only through core's `transitionStatus`, run by a Sanity Function with a Blueprint robot token: only `review -> ready` or `review -> rejected`, only for allowlisted reviewers, and only if the record hasn't changed since it was read. There is no public review endpoint.
 
 ## Known limitations
 
@@ -125,7 +129,7 @@ To point these at your own project rather than the demo's, see "Use AssetLake wi
 3. **No custom asset domain.** Images are served from `cdn.sanity.io`. Custom asset domains are an Enterprise add-on.
 4. **Deletion is not instant revocation.** CDN caches may keep serving a deleted asset for a while.
 5. **The cost profile differs from object storage.** Sanity was chosen for its combined capabilities and developer experience, not for the lowest raw storage price. Usage counts against your plan's asset and bandwidth quotas.
-6. **Workflows are not used.** Review lifecycle work is planned on top of Sanity Workflows (early access).
+6. **Workflows is early access.** The review lifecycle pins `@sanity/workflow-*` 0.36.0; 0.x minors can break, and the engine's own checks are advisory. The enforced rules live in core's `transitionStatus` and in Sanity project roles.
 7. **A review status doesn't make an uploaded asset confidential.** Its URL is public from the moment it's uploaded.
 8. **No generic file or video pipeline.** The MVP is images only.
 9. **No anonymous public uploads in the demo.** A passcode session and quotas are required.

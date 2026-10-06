@@ -50,6 +50,18 @@ describe("parseAssetLakeConfig", () => {
     },
   );
 
+  it("accepts the reviewer allowlist and trims each id", () => {
+    expect(
+      parseAssetLakeConfig({ ...valid, review: { reviewerIds: [" gAbc1 "] } }),
+    ).toMatchObject({ review: { reviewerIds: ["gAbc1"] } });
+  });
+
+  it("rejects a blank reviewer id, which would match an unknown actor", () => {
+    expect(() =>
+      parseAssetLakeConfig({ ...valid, review: { reviewerIds: ["  "] } }),
+    ).toThrow("review.reviewerIds.0");
+  });
+
   it("never echoes the token in the error", () => {
     expect(() => parseAssetLakeConfig({ ...valid, dataset: "Bad" })).toThrow(
       expect.objectContaining({

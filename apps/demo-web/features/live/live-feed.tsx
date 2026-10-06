@@ -104,6 +104,13 @@ export function LiveFeed({ target }: { target: SanityProject }) {
 }
 
 // Relative times are measured from the last fetch, not from a clock read during render.
+// Rejected images stay public by URL, so the feed shows them, marked (review is not privacy).
+const statusVariant = (status: string) => {
+  if (status === "ready") return "outline";
+  if (status === "rejected") return "destructive";
+  return "secondary";
+};
+
 function LiveTile({
   image,
   imageUrls,
@@ -130,9 +137,7 @@ function LiveTile({
       <div className="live-meta">
         <div className="flex flex-wrap gap-1">
           <Badge variant="secondary">{image.purpose}</Badge>
-          <Badge variant={image.status === "ready" ? "outline" : "secondary"}>
-            {image.status}
-          </Badge>
+          <Badge variant={statusVariant(image.status)}>{image.status}</Badge>
         </div>
         <p className="font-mono text-xs text-muted-foreground tabular-nums">
           {image.width && image.height

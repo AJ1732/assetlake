@@ -21,6 +21,16 @@ export const TEST_SECRET = "test-session-secret-with-at-least-32-chars";
 export const APPLICATION_ID = "assetlake-application-campus-demo";
 export const BASE_URL = "http://localhost:3000";
 const POLICY_ID = "assetlake-policy-public-profile-images";
+export const REVIEW_POLICY_ID = "assetlake-policy-reviewed-profile-images";
+
+const publicImages = {
+  allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+  maxFileSizeBytes: 5 * 1024 * 1024,
+  minWidth: null,
+  minHeight: null,
+  maxWidth: null,
+  maxHeight: null,
+};
 
 export const RESULT_KEYS = [
   "aspectRatio",
@@ -43,16 +53,8 @@ export function createTestContext({ dailyCap = 200 } = {}) {
       { id: APPLICATION_ID, slug: "campus-demo", defaultPolicyId: POLICY_ID },
     ],
     policies: [
-      {
-        id: POLICY_ID,
-        allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
-        maxFileSizeBytes: 5 * 1024 * 1024,
-        minWidth: null,
-        minHeight: null,
-        maxWidth: null,
-        maxHeight: null,
-        requiresReview: false,
-      },
+      { id: POLICY_ID, ...publicImages, requiresReview: false },
+      { id: REVIEW_POLICY_ID, ...publicImages, requiresReview: true },
     ],
   });
   const clock = createManualClock();
@@ -69,6 +71,7 @@ export function createTestContext({ dailyCap = 200 } = {}) {
   const dependencies: RouteDependencies = {
     images: assetLake.images,
     applicationId: APPLICATION_ID,
+    reviewPolicyId: REVIEW_POLICY_ID,
     sessions,
     quota: createUploadQuota({
       images: assetLake.images,
@@ -98,6 +101,7 @@ interface UploadRequestOptions {
   filename?: string;
   purpose?: string;
   alt?: string;
+  review?: string;
   headers?: Record<string, string>;
   omitContentLength?: boolean;
 }
@@ -110,6 +114,7 @@ export async function uploadRequest({
   filename = "avatar.png",
   purpose = "avatar",
   alt,
+  review,
   headers = {},
   omitContentLength = false,
 }: UploadRequestOptions = {}): Promise<Request> {
@@ -120,6 +125,7 @@ export async function uploadRequest({
   );
   form.set("purpose", purpose);
   if (alt !== undefined) form.set("alt", alt);
+  if (review !== undefined) form.set("review", review);
 
   const encoded = new Response(form);
   const body = new Uint8Array(await encoded.arrayBuffer());

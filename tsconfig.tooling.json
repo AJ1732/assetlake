@@ -3,5 +3,10 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["scripts/**/*.ts", "scripts/**/*.mts", ".railway/**/*.ts"]
+  "include": [
+    "scripts/**/*.ts",
+    "scripts/**/*.mts",
+    ".railway/**/*.ts",
+    "sanity.blueprint.ts"
+  ]
 }

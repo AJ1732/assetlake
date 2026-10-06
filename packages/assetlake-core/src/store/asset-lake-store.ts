@@ -51,6 +51,8 @@ export interface ImageSource {
 
 export interface ImageRecordView {
   id: string;
+  /** Sanity's _rev: a status change is written only if the record is still at this revision. */
+  revision: string;
   status: ImageStatus;
   purpose: ImagePurpose;
   entity: EntityRef | null;
@@ -104,6 +106,11 @@ export interface AssetLakeStore {
   ): Promise<StoredAsset>;
   /** "exists" when a document with record.id is already present (idempotent replay race). */
   createImage(record: NewImageRecord): Promise<"created" | "exists">;
+  /** "conflict" when the record changed since `ifRevision` was read; nothing is written then. */
+  updateImageStatus(
+    id: string,
+    change: { status: ImageStatus; ifRevision: string },
+  ): Promise<"updated" | "conflict">;
   deleteImage(id: string): Promise<void>;
   /** "referenced" when Sanity refuses the delete because another document still points at it. */
   deleteAsset(assetId: string): Promise<"deleted" | "referenced">;

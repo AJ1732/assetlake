@@ -6,9 +6,9 @@ import { campusDemoPlan } from "./campus-demo-plan";
 const slug = (current: string) => ({ _type: "slug", current });
 const reference = (id: string) => ({ _type: "reference", _ref: id });
 
-// Literal copy of what sanity-schema's seedDocuments() produced before B10 moved setup into core.
-// The live demo and the `test` dataset hold exactly these documents.
-const SEEDED_BEFORE_B10 = [
+// Literal copy of what sanity-schema's seedDocuments() produced before B10 moved setup into core,
+// plus the reviewed policy B08 added. The live demo and the `test` dataset hold these documents.
+const SEEDED_DOCUMENTS = [
   {
     _id: "assetlake-policy-public-profile-images",
     _type: "assetLakePolicy",
@@ -17,6 +17,15 @@ const SEEDED_BEFORE_B10 = [
     allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
     maxFileSizeBytes: 5_242_880,
     requiresReview: false,
+  },
+  {
+    _id: "assetlake-policy-reviewed-profile-images",
+    _type: "assetLakePolicy",
+    name: "Reviewed Profile Images",
+    slug: slug("reviewed-profile-images"),
+    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+    maxFileSizeBytes: 5_242_880,
+    requiresReview: true,
   },
   {
     _id: "assetlake-preset-avatar-sm",
@@ -79,7 +88,7 @@ const SEEDED_BEFORE_B10 = [
 ];
 
 describe("campusDemoPlan", () => {
-  it("produces exactly the six documents the demo was seeded with", () => {
-    expect(toSetupDocuments(campusDemoPlan)).toStrictEqual(SEEDED_BEFORE_B10);
+  it("produces exactly the seven documents the demo is seeded with", () => {
+    expect(toSetupDocuments(campusDemoPlan)).toStrictEqual(SEEDED_DOCUMENTS);
   });
 });

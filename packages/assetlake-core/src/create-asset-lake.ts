@@ -13,6 +13,7 @@ import { AssetLakeError } from "./errors/asset-lake-error";
 import { createDeleteImage } from "./images/delete-image";
 import { cryptoIdGenerator, type IdGenerator } from "./images/image-id";
 import { normalizeImage, toResultStatus } from "./images/normalize";
+import { createTransitionStatus } from "./images/transition-status";
 import { createUploadImageFromUrl } from "./images/upload-from-url";
 import { type Clock, createUploadImage } from "./images/upload-image";
 import { createJsonLogger, type Logger } from "./logging/logger";
@@ -77,6 +78,11 @@ export function createAssetLake(
         config.remoteUploads?.allowedHosts ?? [],
       ),
       delete: createDeleteImage({ store, logger }),
+      transitionStatus: createTransitionStatus({
+        store,
+        logger,
+        reviewerIds: config.review?.reviewerIds ?? [],
+      }),
 
       async findLatestForEntity(query: {
         entity: EntityRef;

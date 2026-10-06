@@ -13,6 +13,7 @@ import {
   createTestContext,
   expectFailure,
   RESULT_KEYS,
+  REVIEW_POLICY_ID,
   TEST_TOKEN,
   type TestContext,
   uploadRequest,
@@ -220,6 +221,41 @@ describe("POST /api/assets/images: success", () => {
     );
     expect(second.data.id).toBe(first.data.id);
     expect(context.store.images.size).toBe(1);
+  });
+});
+
+describe("POST /api/assets/images: hold for review", () => {
+  it("stores the upload under the review policy and answers 201 with status review", async () => {
+    const context = createTestContext();
+    const { response } = await signedInUpload(context, { review: "on" });
+
+    expect(response.status).toBe(201);
+    const body = await response.json();
+    expect(body.data.status).toBe("review");
+    expect(context.store.images.get(body.data.id)?.policyId).toBe(
+      REVIEW_POLICY_ID,
+    );
+  });
+
+  it("keeps the application's default policy when review is not asked for", async () => {
+    const context = createTestContext();
+    const { response } = await signedInUpload(context);
+
+    const body = await response.json();
+    expect(body.data.status).toBe("ready");
+    expect(context.store.images.get(body.data.id)?.policyId).not.toBe(
+      REVIEW_POLICY_ID,
+    );
+  });
+
+  it("rejects any other review value: the client never chooses a policy", async () => {
+    const context = createTestContext();
+    const { response } = await signedInUpload(context, {
+      review: REVIEW_POLICY_ID,
+    });
+
+    await expectFailure(response, 400, "BAD_REQUEST");
+    expect(context.store.images.size).toBe(0);
   });
 });
 

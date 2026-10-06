@@ -32,10 +32,12 @@
   },
   "devDependencies": {
     "@assetlake/core": "workspace:*",
+    "@assetlake/image-review": "workspace:*",
     "@assetlake/sanity-schema": "workspace:*",
     "@commitlint/cli": "^20.4.4",
     "@commitlint/config-conventional": "^20.4.4",
     "@next/eslint-plugin-next": "16.2.6",
+    "@sanity/blueprints": "^0.28.0",
     "@types/node": "^24",
     "@typescript-eslint/eslint-plugin": "^8.42.0",
     "@typescript-eslint/parser": "^8.42.0",

@@ -65,9 +65,35 @@ await assetLake.setup.missing(plan); // [] once everything exists
 ```
 
 - Defaults: policy `public-images` (JPEG, PNG, WebP up to 5 MB), presets `avatar-sm`, `avatar`, `card`, `hero` (`STARTER_POLICY`, `STARTER_PRESETS`). Pass `policy` or `presets` to change them.
+- `additionalPolicies` (0.4.0) writes more policies beside the default one. An upload picks one with `policyId: "assetlake-policy-<slug>"`; the application keeps `policy` as its default.
 - The default mode is create-if-missing, so a rerun never overwrites presets edited in the Studio or the console. `{ mode: "reset" }` writes the plan's values back on purpose.
 - **Presets are dataset-global.** `images.url(id, { preset })` resolves the slug across the whole dataset, not per application, and preset ids are `assetlake-preset-<slug>`. Two applications that use the slug `avatar` share one preset document. `application.presets` records which presets an app uses; it doesn't restrict resolution.
 - `toSetupDocuments(plan)` returns the raw documents if you would rather write them yourself.
+
+## Review lifecycle (0.4.0)
+
+A policy with `requiresReview: true` stores new uploads as `review`. `findLatestForEntity` only returns `ready` images, so a held image stays out of the app until a reviewer decides:
+
+```ts
+const assetLake = createAssetLake({
+  // ...
+  review: { reviewerIds: ["gAbc123"] }, // Sanity user ids; absent means nobody may review
+});
+
+await assetLake.images.transitionStatus({
+  id: image.id,
+  to: "ready", // or "rejected"
+  reviewer: { id: "gAbc123" },
+});
+// { id, from: "review", to: "ready", outcome: "applied" }
+```
+
+- Only `review -> ready` and `review -> rejected` are allowed. Anything else is `INVALID_STATUS_TRANSITION`; a reviewer outside `reviewerIds` is `FORBIDDEN`. Nothing is written in either case.
+- Repeating the decision an image already has returns `outcome: "unchanged"`, so a queue that delivers twice is safe.
+- The write is conditional on the record's revision. If someone edits the record between the read and the write, the call fails with `INVALID_STATUS_TRANSITION` and nothing changes; review it again.
+- **Review governs lifecycle, not confidentiality.** The asset is public at its `cdn.sanity.io` URL from the moment it uploads, and rejecting it doesn't change that.
+
+This repo drives it from Sanity Workflows (`packages/image-review`), but any server that can authenticate its reviewers can call it.
 
 ## Use it from any backend
 

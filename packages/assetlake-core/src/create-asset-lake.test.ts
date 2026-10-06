@@ -42,6 +42,34 @@ describe("createAssetLake facade", () => {
     ).resolves.toBeNull();
   });
 
+  it("skips newer images in review or rejected until one is approved", async () => {
+    const reviewer = { id: "gReviewer1" };
+    const scenario = createScenario({ requiresReview: true }, undefined, {
+      review: { reviewerIds: [reviewer.id] },
+    });
+    const decide = (id: string, to: "ready" | "rejected") =>
+      scenario.assetLake.images.transitionStatus({ id, to, reviewer });
+    const approved = await upload(scenario, 1);
+    await decide(approved.id, "ready");
+    const rejected = await upload(scenario, 2);
+    await decide(rejected.id, "rejected");
+    const pending = await upload(scenario, 3);
+    const latest = () =>
+      scenario.assetLake.images.findLatestForEntity({
+        entity,
+        purpose: "avatar",
+      });
+
+    expect(pending.status).toBe("review");
+    await expect(latest()).resolves.toMatchObject({ id: approved.id });
+
+    await decide(pending.id, "ready");
+    await expect(latest()).resolves.toMatchObject({
+      id: pending.id,
+      status: "ready",
+    });
+  });
+
   it("builds preset URLs and responsive images for a stored image", async () => {
     const scenario = createScenario();
     const image = await upload(scenario, 1);

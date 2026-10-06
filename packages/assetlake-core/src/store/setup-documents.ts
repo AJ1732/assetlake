@@ -1,5 +1,5 @@
 import { DOCUMENT_TYPES } from "../constants";
-import type { SetupPlan } from "../setup/setup-plan";
+import { planPolicies, type SetupPlan } from "../setup/setup-plan";
 
 // The only place setup document shapes live. init, the demo seed and the live evals all write
 // these, so the README, the CLI and the code cannot drift apart.
@@ -13,13 +13,14 @@ const slug = (current: string) => ({ _type: "slug", current });
 const reference = (id: string) => ({ _type: "reference", _ref: id });
 
 export function toSetupDocuments(plan: SetupPlan): SetupDocument[] {
-  const { id: policyId, slug: policySlug, ...policyFields } = plan.policy;
-  const policy = {
-    _id: policyId,
-    _type: DOCUMENT_TYPES.policy,
-    slug: slug(policySlug),
-    ...policyFields,
-  };
+  const policies = planPolicies(plan).map(
+    ({ id, slug: policySlug, ...fields }) => ({
+      _id: id,
+      _type: DOCUMENT_TYPES.policy,
+      slug: slug(policySlug),
+      ...fields,
+    }),
+  );
 
   const presets = plan.presets.map(({ id, slug: presetSlug, ...fields }) => ({
     _id: id,
@@ -34,12 +35,12 @@ export function toSetupDocuments(plan: SetupPlan): SetupDocument[] {
     name: plan.application.name,
     slug: slug(plan.application.slug),
     environment: plan.application.environment,
-    defaultPolicy: reference(policyId),
+    defaultPolicy: reference(plan.policy.id),
     presets: plan.presets.map((preset) => ({
       _key: preset.slug,
       ...reference(preset.id),
     })),
   };
 
-  return [policy, ...presets, application];
+  return [...policies, ...presets, application];
 }

@@ -161,7 +161,20 @@ describe("parseUploadResponse", () => {
 describe("buildUploadForm", () => {
   it("omits alt when it is blank", () => {
     expect(
-      buildUploadForm(png(), "avatar", "   ").has(UPLOAD_FORM_FIELDS.alt),
+      buildUploadForm(png(), "avatar", { alt: "   " }).has(
+        UPLOAD_FORM_FIELDS.alt,
+      ),
+    ).toBe(false);
+  });
+
+  it("asks for review only when the person ticked it", () => {
+    expect(
+      buildUploadForm(png(), "avatar", { holdForReview: true }).get(
+        UPLOAD_FORM_FIELDS.review,
+      ),
+    ).toBe("on");
+    expect(
+      buildUploadForm(png(), "avatar").has(UPLOAD_FORM_FIELDS.review),
     ).toBe(false);
   });
 });

@@ -28,6 +28,7 @@ import { AssetDetail } from "./screens/asset-detail";
 import { Assets } from "./screens/assets";
 import { Overview } from "./screens/overview";
 import { Presets } from "./screens/presets";
+import { ReviewQueue } from "./screens/review-queue";
 
 export function ConsoleShell() {
   const [route, setRoute] = useState<Route>(INITIAL_ROUTE);
@@ -79,6 +80,9 @@ function Screen({
     }
     case "assets": {
       return <Assets onOpenAsset={onOpenAsset} />;
+    }
+    case "review": {
+      return <ReviewQueue onOpenAsset={onOpenAsset} />;
     }
     case "presets": {
       return <Presets />;

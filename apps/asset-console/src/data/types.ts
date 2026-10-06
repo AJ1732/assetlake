@@ -30,6 +30,11 @@ export interface ImageListResult {
   items: ImageRow[];
 }
 
+export interface ReviewQueueResult {
+  pending: ImageRow[];
+  rejected: ImageRow[];
+}
+
 export interface ImageDetailRow extends ImageRow {
   alt: string | null;
   tags: string[] | null;

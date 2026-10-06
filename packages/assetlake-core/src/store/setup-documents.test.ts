@@ -74,4 +74,32 @@ describe("toSetupDocuments", () => {
       },
     ]);
   });
+
+  it("writes additional policies as policy documents the application does not default to", () => {
+    const documents = toSetupDocuments(
+      createSetupPlan({
+        applicationSlug: "shop",
+        presets: [],
+        additionalPolicies: [
+          {
+            slug: "reviewed",
+            name: "Reviewed",
+            allowedMimeTypes: ["image/png"],
+            maxFileSizeBytes: 1000,
+            requiresReview: true,
+          },
+        ],
+      }),
+    );
+
+    expect(documents.map((document) => document._id)).toEqual([
+      "assetlake-policy-public-images",
+      "assetlake-policy-reviewed",
+      "assetlake-application-shop",
+    ]);
+    expect(documents[1]).toMatchObject({ requiresReview: true });
+    expect(documents[2]).toMatchObject({
+      defaultPolicy: { _ref: "assetlake-policy-public-images" },
+    });
+  });
 });

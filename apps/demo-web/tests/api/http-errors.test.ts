@@ -7,7 +7,8 @@ import {
   toFailureResponse,
 } from "@/lib/server/http-errors";
 
-// The B03 spec status table, plus PRESET_INVALID and the URL-upload codes (added to core later).
+// The B03 spec status table, plus PRESET_INVALID, the URL-upload codes and the review code
+// (added to core later).
 const SPEC_STATUS: Record<string, number> = {
   UNAUTHENTICATED: 401,
   BAD_REQUEST: 400,
@@ -26,6 +27,7 @@ const SPEC_STATUS: Record<string, number> = {
   METADATA_CREATE_FAILED: 500,
   SOURCE_URL_NOT_ALLOWED: 400,
   SOURCE_FETCH_FAILED: 502,
+  INVALID_STATUS_TRANSITION: 409,
 };
 
 describe("HTTP status map", () => {

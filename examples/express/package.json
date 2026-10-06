@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@assetlake/core": "^0.3.0",
+    "@assetlake/core": "^0.4.0",
     "express": "^5.2.1"
   },
   "devDependencies": {

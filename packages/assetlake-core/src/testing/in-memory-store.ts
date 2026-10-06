@@ -2,8 +2,12 @@ import { createHash } from "node:crypto";
 
 import { fileTypeFromBuffer } from "file-type";
 
-import type { EntityRef } from "../contracts";
-import { planDocumentIds, type SetupPlan } from "../setup/setup-plan";
+import type { EntityRef, ImageStatus } from "../contracts";
+import {
+  planDocumentIds,
+  planPolicies,
+  type SetupPlan,
+} from "../setup/setup-plan";
 import type {
   ApplicationRecord,
   AssetLakeStore,
@@ -24,6 +28,7 @@ type Failure =
   | "uploadImageAsset"
   | "uploadImageAssetFromUrl"
   | "createImage"
+  | "updateImageStatus"
   | "deleteAsset";
 
 const httpError = (statusCode: number, message: string) =>
@@ -50,6 +55,7 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
   readonly assets = new Map<string, StoredAsset>();
   readonly images = new Map<string, NewImageRecord>();
   readonly calls: Record<string, number> = {};
+  private readonly revisions = new Map<string, number>();
   private readonly failures = new Map<Failure, Error>();
   private readonly remoteSources = new Map<string, Uint8Array>();
 
@@ -88,6 +94,7 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
       throw new Error(`asset ${record.assetId} missing for ${record.id}`);
     return {
       id: record.id,
+      revision: this.revisionOf(record.id),
       status: record.status,
       purpose: record.purpose,
       entity: record.entity ?? null,
@@ -95,6 +102,15 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
       source: { asset: { _ref: record.assetId } },
       asset,
     };
+  }
+
+  private revisionOf(id: string): string {
+    return `rev-${this.revisions.get(id) ?? 0}`;
+  }
+
+  /** An edit by someone else (alt text, Studio) that moves the record to a new revision. */
+  touchImage(id: string): void {
+    this.revisions.set(id, (this.revisions.get(id) ?? 0) + 1);
   }
 
   async findApplication(id: string) {
@@ -206,13 +222,28 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
     return "created" as const;
   }
 
+  async updateImageStatus(
+    id: string,
+    { status, ifRevision }: { status: ImageStatus; ifRevision: string },
+  ) {
+    this.track("updateImageStatus");
+    const record = this.images.get(id);
+    if (!record || this.revisionOf(id) !== ifRevision)
+      return "conflict" as const;
+    this.images.set(id, { ...record, status });
+    this.touchImage(id);
+    return "updated" as const;
+  }
+
   async deleteImage(id: string) {
     this.images.delete(id);
   }
 
   async findMissingSetup(plan: SetupPlan) {
     const present = new Set<string>();
-    if (this.policies.has(plan.policy.id)) present.add(plan.policy.id);
+    for (const policy of planPolicies(plan)) {
+      if (this.policies.has(policy.id)) present.add(policy.id);
+    }
     for (const preset of plan.presets) {
       if (this.presets.has(preset.slug)) present.add(preset.id);
     }
@@ -225,9 +256,9 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
     const missing = new Set(await this.findMissingSetup(plan));
     const shouldWrite = (id: string) => mode === "reset" || missing.has(id);
 
-    if (shouldWrite(plan.policy.id)) {
-      const { id, allowedMimeTypes, maxFileSizeBytes, requiresReview } =
-        plan.policy;
+    for (const policy of planPolicies(plan)) {
+      if (!shouldWrite(policy.id)) continue;
+      const { id, allowedMimeTypes, maxFileSizeBytes, requiresReview } = policy;
       this.policies.set(id, {
         id,
         allowedMimeTypes,

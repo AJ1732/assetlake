@@ -72,6 +72,35 @@ describe("assetLake.setup", () => {
     expect(url).toContain("w=100&h=100");
   });
 
+  it("lets an upload pick an additional policy that holds it for review", async () => {
+    const { assetLake } = createEmptyLake();
+    const reviewPlan = createSetupPlan({
+      applicationSlug: "shop",
+      additionalPolicies: [
+        {
+          ...plan.policy,
+          slug: "reviewed",
+          name: "Reviewed",
+          requiresReview: true,
+        },
+      ],
+      presets: [],
+    });
+    await assetLake.setup.ensure(reviewPlan);
+
+    const image = await assetLake.images.upload({
+      body: createPngBytes(300, 200),
+      filename: "photo.png",
+      contentType: "image/png",
+      applicationId: reviewPlan.application.id,
+      policyId: "assetlake-policy-reviewed",
+      purpose: "content",
+      actorId: "cli",
+    });
+
+    expect(image.status).toBe("review");
+  });
+
   it("keeps an edited preset by default and restores it in reset mode", async () => {
     const { store, assetLake } = createEmptyLake();
     await assetLake.setup.ensure(plan);

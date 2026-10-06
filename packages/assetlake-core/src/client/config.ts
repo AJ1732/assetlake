@@ -32,6 +32,12 @@ export const assetLakeConfigSchema = z.object({
       ),
     })
     .optional(),
+  // images.transitionStatus refuses every reviewer not listed here, and everyone when it is absent.
+  review: z
+    .object({
+      reviewerIds: z.array(z.string().trim().min(1, "reviewer id")),
+    })
+    .optional(),
 });
 
 export type AssetLakeConfigInput = z.input<typeof assetLakeConfigSchema>;

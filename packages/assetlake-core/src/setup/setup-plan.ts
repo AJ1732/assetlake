@@ -34,6 +34,8 @@ export interface SetupPlanInput {
   applicationName?: string;
   environment?: ApplicationEnvironment;
   policy?: PolicySpec;
+  /** Extra policies an app can pass as `policyId`; the application's default stays `policy`. */
+  additionalPolicies?: PolicySpec[];
   presets?: PresetSpec[];
 }
 
@@ -45,6 +47,7 @@ export interface SetupPlan {
     environment: ApplicationEnvironment;
   };
   policy: PolicySpec & { id: string };
+  additionalPolicies: Array<PolicySpec & { id: string }>;
   presets: Array<PresetSpec & { id: string }>;
 }
 
@@ -116,21 +119,30 @@ const presetSchema = imageTransformSchema.extend({
   name: nameSchema,
 });
 
-const setupPlanInputSchema = z.object({
-  applicationSlug: slugSchema,
-  applicationName: nameSchema.optional(),
-  environment: z.enum(APPLICATION_ENVIRONMENTS).default("production"),
-  // prefault, not default: the starter values go through the same validation as caller input.
-  policy: policySchema.prefault(STARTER_POLICY),
-  presets: z
-    .array(presetSchema)
-    .prefault([...STARTER_PRESETS])
-    .refine(
-      (presets) =>
-        new Set(presets.map((preset) => preset.slug)).size === presets.length,
-      "preset slugs must be unique",
-    ),
-});
+const hasUniqueSlugs = (specs: Array<{ slug: string }>) =>
+  new Set(specs.map((spec) => spec.slug)).size === specs.length;
+
+const setupPlanInputSchema = z
+  .object({
+    applicationSlug: slugSchema,
+    applicationName: nameSchema.optional(),
+    environment: z.enum(APPLICATION_ENVIRONMENTS).default("production"),
+    // prefault, not default: the starter values go through the same validation as caller input.
+    policy: policySchema.prefault(STARTER_POLICY),
+    additionalPolicies: z.array(policySchema).default([]),
+    presets: z
+      .array(presetSchema)
+      .prefault([...STARTER_PRESETS])
+      .refine(hasUniqueSlugs, "preset slugs must be unique"),
+  })
+  .refine(
+    ({ policy, additionalPolicies }) =>
+      hasUniqueSlugs([policy, ...additionalPolicies]),
+    {
+      message: "policy slugs must be unique",
+      path: ["additionalPolicies"],
+    },
+  );
 
 const documentId = (kind: "application" | "policy" | "preset", slug: string) =>
   `assetlake-${kind}-${slug}`;
@@ -144,8 +156,18 @@ export function createSetupPlan(input: SetupPlanInput): SetupPlan {
     );
     throw new Error(`Invalid setup plan: ${[...new Set(fields)].join(", ")}`);
   }
-  const { applicationSlug, applicationName, environment, policy, presets } =
-    parsed.data;
+  const {
+    applicationSlug,
+    applicationName,
+    environment,
+    policy,
+    additionalPolicies,
+    presets,
+  } = parsed.data;
+  const withPolicyId = (spec: PolicySpec) => ({
+    id: documentId("policy", spec.slug),
+    ...spec,
+  });
 
   return {
     application: {
@@ -154,7 +176,8 @@ export function createSetupPlan(input: SetupPlanInput): SetupPlan {
       name: applicationName ?? applicationSlug,
       environment,
     },
-    policy: { id: documentId("policy", policy.slug), ...policy },
+    policy: withPolicyId(policy),
+    additionalPolicies: additionalPolicies.map(withPolicyId),
     presets: presets.map((preset) => ({
       id: documentId("preset", preset.slug),
       ...preset,
@@ -162,10 +185,14 @@ export function createSetupPlan(input: SetupPlanInput): SetupPlan {
   };
 }
 
+export function planPolicies(plan: SetupPlan) {
+  return [plan.policy, ...plan.additionalPolicies];
+}
+
 /** Referenced documents come before the application that points at them. */
 export function planDocumentIds(plan: SetupPlan): string[] {
   return [
-    plan.policy.id,
+    ...planPolicies(plan).map((policy) => policy.id),
     ...plan.presets.map((preset) => preset.id),
     plan.application.id,
   ];

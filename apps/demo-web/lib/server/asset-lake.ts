@@ -4,8 +4,9 @@ import { type AssetLake, createAssetLake } from "@assetlake/core";
 
 import { serverEnv as environment } from "./env";
 
-// Mirrors SEED_IDS.application in packages/sanity-schema, which has no public subpath export.
+// Mirror the ids scripts/campus-demo-plan.ts seeds (pinned by campus-demo-plan.test.ts).
 export const DEMO_APPLICATION_ID = "assetlake-application-campus-demo";
+export const DEMO_REVIEW_POLICY_ID = "assetlake-policy-reviewed-profile-images";
 
 let assetLake: AssetLake | undefined;
 

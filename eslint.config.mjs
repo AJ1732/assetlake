@@ -167,6 +167,11 @@ const eslintConfig = defineConfig([
               name: "@assetlake/core/testing",
               message: "Test doubles are for *.test.ts files only.",
             },
+            {
+              name: "@assetlake/image-review/server",
+              message:
+                "Drainer code with the write path. Import from @assetlake/image-review.",
+            },
           ],
         },
       ],
@@ -185,6 +190,7 @@ const eslintConfig = defineConfig([
     "**/test-results/**",
     "**/next-env.d.ts",
     "**/.sanity/**",
+    "**/.build/**",
     "docs/**",
   ]),
 ]);

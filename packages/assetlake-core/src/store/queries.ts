@@ -2,6 +2,7 @@ import { DOCUMENT_TYPES } from "../constants";
 
 const IMAGE_VIEW_PROJECTION = `{
   "id": _id,
+  "revision": _rev,
   status,
   purpose,
   "entity": select(defined(entity.id) => entity{type, id}, null),

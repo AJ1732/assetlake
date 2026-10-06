@@ -29,7 +29,11 @@ export interface UploadDependencies {
   sessions: SessionVerifier;
   quota: Pick<UploadQuota, "reserve">;
   applicationId: string;
+  /** Server-side only: the client asks for review, never names a policy. */
+  reviewPolicyId: string;
 }
+
+const HOLD_FOR_REVIEW = "on";
 
 const uploadFormSchema = z.object({
   file: z.instanceof(File),
@@ -41,6 +45,7 @@ const uploadFormSchema = z.object({
     .optional()
     .transform((alt) => alt || undefined),
   idempotencyKey: z.string().min(1).max(200).optional(),
+  review: z.literal(HOLD_FOR_REVIEW).optional(),
 });
 
 /** Rejects before the body is read: formData() would otherwise buffer whatever arrives. */
@@ -64,13 +69,20 @@ async function readUploadForm(request: Request) {
     file: formData?.get(UPLOAD_FORM_FIELDS.file),
     purpose: formData?.get(UPLOAD_FORM_FIELDS.purpose),
     alt: formData?.get(UPLOAD_FORM_FIELDS.alt) ?? undefined,
+    review: formData?.get(UPLOAD_FORM_FIELDS.review) ?? undefined,
     idempotencyKey: request.headers.get(IDEMPOTENCY_HEADER) ?? undefined,
   });
 }
 
 export async function uploadImage(
   request: Request,
-  { images, sessions, quota, applicationId }: UploadDependencies,
+  {
+    images,
+    sessions,
+    quota,
+    applicationId,
+    reviewPolicyId,
+  }: UploadDependencies,
 ): Promise<HandlerResult> {
   const session = await authenticate(request, sessions);
   if (!session) return unauthenticated();
@@ -101,12 +113,13 @@ export async function uploadImage(
       );
     }
 
-    const { file, purpose, alt, idempotencyKey } = form.data;
+    const { file, purpose, alt, idempotencyKey, review } = form.data;
     const image = await images.upload({
       body: new Uint8Array(await file.arrayBuffer()),
       filename: file.name || "upload",
       contentType: file.type,
       applicationId,
+      policyId: review ? reviewPolicyId : undefined,
       purpose,
       entity,
       alt,

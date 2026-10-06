@@ -142,6 +142,20 @@ export function createSanityStore(
       }
     },
 
+    async updateImageStatus(id, { status, ifRevision }) {
+      try {
+        await client
+          .patch(id)
+          .ifRevisionId(ifRevision)
+          .set({ status })
+          .commit();
+        return "updated";
+      } catch (error) {
+        if (hasStatusCode(error, CONFLICT)) return "conflict";
+        throw error;
+      }
+    },
+
     async deleteImage(id) {
       await client.delete(id);
     },

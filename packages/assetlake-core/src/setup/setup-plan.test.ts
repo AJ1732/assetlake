@@ -3,6 +3,13 @@ import { describe, expect, it } from "vitest";
 import { createSetupPlan, planDocumentIds } from "./setup-plan";
 
 const thumb = { slug: "thumb", name: "Thumb", width: 100, height: 100 };
+const reviewed = {
+  slug: "reviewed",
+  name: "Reviewed",
+  allowedMimeTypes: ["image/png" as const],
+  maxFileSizeBytes: 1000,
+  requiresReview: true,
+};
 
 describe("createSetupPlan", () => {
   it("derives assetlake-<kind>-<slug> ids for every document", () => {
@@ -94,6 +101,34 @@ describe("createSetupPlan", () => {
     ).toThrow("Invalid setup plan: policy.allowedMimeTypes.0");
   });
 
+  it("gives each additional policy its own id and keeps the first as the default", () => {
+    const plan = createSetupPlan({
+      applicationSlug: "shop",
+      additionalPolicies: [reviewed],
+    });
+
+    expect(plan.policy.id).toBe("assetlake-policy-public-images");
+    expect(plan.additionalPolicies).toEqual([
+      { id: "assetlake-policy-reviewed", ...reviewed },
+    ]);
+  });
+
+  it("defaults to no additional policies", () => {
+    expect(
+      createSetupPlan({ applicationSlug: "shop" }).additionalPolicies,
+    ).toEqual([]);
+  });
+
+  it("rejects an additional policy that reuses a policy slug, which would share one id", () => {
+    expect(() =>
+      createSetupPlan({
+        applicationSlug: "shop",
+        policy: { ...reviewed, requiresReview: false },
+        additionalPolicies: [reviewed],
+      }),
+    ).toThrow("Invalid setup plan: additionalPolicies");
+  });
+
   it("rejects an unknown environment", () => {
     expect(() =>
       createSetupPlan({
@@ -110,6 +145,21 @@ describe("planDocumentIds", () => {
 
     expect(planDocumentIds(plan)).toEqual([
       "assetlake-policy-public-images",
+      "assetlake-preset-thumb",
+      "assetlake-application-shop",
+    ]);
+  });
+
+  it("lists additional policies after the default policy", () => {
+    const plan = createSetupPlan({
+      applicationSlug: "shop",
+      additionalPolicies: [reviewed],
+      presets: [thumb],
+    });
+
+    expect(planDocumentIds(plan)).toEqual([
+      "assetlake-policy-public-images",
+      "assetlake-policy-reviewed",
       "assetlake-preset-thumb",
       "assetlake-application-shop",
     ]);

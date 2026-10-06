@@ -1,6 +1,10 @@
 import "server-only";
 
-import { DEMO_APPLICATION_ID, getAssetLake } from "./asset-lake";
+import {
+  DEMO_APPLICATION_ID,
+  DEMO_REVIEW_POLICY_ID,
+  getAssetLake,
+} from "./asset-lake";
 import { serverEnv as environment } from "./env";
 import type { DeleteDependencies } from "./http/delete-image-handler";
 import type { SessionDependencies } from "./http/session-handlers";
@@ -22,6 +26,7 @@ export function getRouteDependencies(): RouteDependencies {
   dependencies = {
     images,
     applicationId: DEMO_APPLICATION_ID,
+    reviewPolicyId: DEMO_REVIEW_POLICY_ID,
     sessions: getSessionCodec(),
     quota: createUploadQuota({
       images,

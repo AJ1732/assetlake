@@ -4,7 +4,7 @@ import type {
 } from "@assetlake/core/contracts";
 import { useCallback, useReducer } from "react";
 
-import { uploadImage } from "./upload-image";
+import { type UploadDetails, uploadImage } from "./upload-image";
 import { checkUploadLimits } from "./upload-limits";
 import {
   INITIAL_UPLOAD_STATE,
@@ -22,11 +22,11 @@ export function useImageUpload({
 }) {
   const [state, dispatch] = useReducer(uploadReducer, INITIAL_UPLOAD_STATE);
 
-  async function send(selection: UploadSelection, alt: string) {
+  async function send(selection: UploadSelection, details: UploadDetails) {
     const outcome = await uploadImage({
+      ...details,
       file: selection.file,
       purpose,
-      alt,
       idempotencyKey: selection.idempotencyKey,
       onProgress: (percent) => dispatch({ type: "PROGRESS", percent }),
       onBytesSent: () => dispatch({ type: "BYTES_SENT" }),
@@ -56,16 +56,16 @@ export function useImageUpload({
     });
   }
 
-  function start(alt: string) {
+  function start(details: UploadDetails) {
     if (state.phase !== "previewing") return;
     dispatch({ type: "START" });
-    void send(state, alt);
+    void send(state, details);
   }
 
-  function retry(alt: string) {
+  function retry(details: UploadDetails) {
     if (state.phase !== "error" || !state.selection) return;
     dispatch({ type: "RETRY" });
-    void send(state.selection, alt);
+    void send(state.selection, details);
   }
 
   const reset = () => dispatch({ type: "RESET" });

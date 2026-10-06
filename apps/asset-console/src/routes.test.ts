@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { activeTab, assetRoute, INITIAL_ROUTE } from "./routes";
+import { activeTab, assetRoute, INITIAL_ROUTE, TABS } from "./routes";
 
 describe("routes", () => {
   it("starts on the overview", () => {
     expect(activeTab(INITIAL_ROUTE)).toBe("overview");
+  });
+
+  it("lists the Review Queue as the fifth screen, between assets and presets", () => {
+    expect(TABS.map((tab) => tab.screen)).toEqual([
+      "overview",
+      "assets",
+      "review",
+      "presets",
+    ]);
   });
 
   it("keeps the originating tab highlighted on the asset detail", () => {

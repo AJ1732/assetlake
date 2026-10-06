@@ -50,3 +50,9 @@ docs/*
 
 # editor
 .vscode/
+
+# Blueprint scope and Stack ids from `sanity blueprints init` (local admin state)
+.sanity/
+
+# Sanity Functions bundles written by `sanity blueprints deploy`
+.build/

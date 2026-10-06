@@ -23,6 +23,8 @@ export const HTTP_STATUS: Record<ApiErrorCode, number> = {
   // URL uploads (core 0.3.0). demo-web doesn't call them; the Record still needs every code.
   SOURCE_URL_NOT_ALLOWED: 400,
   SOURCE_FETCH_FAILED: 502,
+  // Review transitions (core 0.4.0) run in the image-review drainer, never in a demo-web route.
+  INVALID_STATUS_TRANSITION: 409,
 };
 
 export const GENERIC_SERVER_MESSAGE = "Something went wrong. Please try again.";

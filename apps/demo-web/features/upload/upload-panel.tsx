@@ -22,6 +22,7 @@ export function UploadPanel({ hasAvatar }: { hasAvatar: boolean }) {
   const router = useRouter();
   const [isRefreshing, startRefresh] = useTransition();
   const [alt, setAlt] = useState("");
+  const [holdForReview, setHoldForReview] = useState(false);
   const { state, selectFile, start, retry, reset } = useImageUpload({
     purpose: "avatar",
     onUploaded: () => startRefresh(() => router.refresh()),
@@ -99,11 +100,27 @@ export function UploadPanel({ hasAvatar }: { hasAvatar: boolean }) {
         </div>
       ) : null}
 
+      {state.phase === "previewing" || state.phase === "error" ? (
+        <label className="field-check">
+          <input
+            type="checkbox"
+            name="review"
+            checked={holdForReview}
+            onChange={(event) => setHoldForReview(event.currentTarget.checked)}
+          />
+          <span>Hold for review</span>
+          <span className="field-check-hint">
+            A reviewer approves it in the AssetLake console before it shows
+            here. It is still public at its URL while it waits.
+          </span>
+        </label>
+      ) : null}
+
       <UploadStatus
         state={state}
         isRefreshing={isRefreshing}
-        onStart={() => start(alt)}
-        onRetry={() => retry(alt)}
+        onStart={() => start({ alt, holdForReview })}
+        onRetry={() => retry({ alt, holdForReview })}
         onReset={reset}
       />
     </section>
@@ -208,6 +225,14 @@ function UploadProgress({
   );
 }
 
+function resultMessage(result: AssetLakeImageResult, isRefreshing: boolean) {
+  if (result.status === "review")
+    return "Held for review. It appears here once a reviewer approves it; until then your current avatar stays.";
+  return isRefreshing
+    ? "Uploaded. Re-rendering your avatar from cdn.sanity.io…"
+    : "Uploaded. Your avatar and every preset below now come from cdn.sanity.io.";
+}
+
 function UploadResult({
   result,
   isRefreshing,
@@ -221,9 +246,7 @@ function UploadResult({
   return (
     <div className="upload-result">
       <p className="text-sm" aria-live="polite">
-        {isRefreshing
-          ? "Uploaded. Re-rendering your avatar from cdn.sanity.io…"
-          : "Uploaded. Your avatar and every preset below now come from cdn.sanity.io."}
+        {resultMessage(result, isRefreshing)}
       </p>
       <details open className="result-json">
         <summary className="font-mono text-xs">

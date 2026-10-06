@@ -26,10 +26,15 @@ export type UploadOutcome =
   | ApiSuccess<AssetLakeImageResult>
   | { success: false; error: UploadError };
 
-export interface UploadImageOptions {
+/** What the person adds to a file before sending it. */
+export interface UploadDetails {
+  alt?: string;
+  holdForReview?: boolean;
+}
+
+export interface UploadImageOptions extends UploadDetails {
   file: File;
   purpose: ImagePurpose;
-  alt?: string;
   idempotencyKey: string;
   onProgress?: (percent: number) => void;
   onBytesSent?: () => void;
@@ -39,13 +44,14 @@ export interface UploadImageOptions {
 export function buildUploadForm(
   file: File,
   purpose: ImagePurpose,
-  alt?: string,
+  { alt, holdForReview = false }: UploadDetails = {},
 ): FormData {
   const form = new FormData();
   form.append(UPLOAD_FORM_FIELDS.file, file, file.name);
   form.append(UPLOAD_FORM_FIELDS.purpose, purpose);
   const trimmedAlt = alt?.trim();
   if (trimmedAlt) form.append(UPLOAD_FORM_FIELDS.alt, trimmedAlt);
+  if (holdForReview) form.append(UPLOAD_FORM_FIELDS.review, "on");
   return form;
 }
 
@@ -89,6 +95,7 @@ export function uploadImage({
   file,
   purpose,
   alt,
+  holdForReview,
   idempotencyKey,
   onProgress,
   onBytesSent,
@@ -112,6 +119,6 @@ export function uploadImage({
           "The upload did not reach the server. Check your connection and retry.",
         ),
       );
-    request.send(buildUploadForm(file, purpose, alt));
+    request.send(buildUploadForm(file, purpose, { alt, holdForReview }));
   });
 }

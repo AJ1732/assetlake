@@ -176,6 +176,18 @@ describe("installed with npm and loaded by plain node", () => {
     ).toBe("true,true,false,false");
   });
 
+  it("exposes images.transitionStatus (0.4.0)", () => {
+    const script = [
+      `const { createAssetLake } = await import("@assetlake/core");`,
+      `const lake = createAssetLake({ projectId: "abc", dataset: "test", apiVersion: "2026-10-04", token: "unused", review: { reviewerIds: ["gReviewer"] } });`,
+      `console.log(typeof lake.images.transitionStatus);`,
+    ].join(" ");
+
+    expect(
+      exec("node", ["--input-type=module", "-e", script], consumer).trim(),
+    ).toBe("function");
+  });
+
   it("runs the assetlake bin", () => {
     const bin = path.join(consumer, "node_modules", ".bin", "assetlake");
 

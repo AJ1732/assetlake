@@ -1,7 +1,12 @@
 // Public contract. Changing it is a contract change (docs/PLAN.md §3). Types and constants only.
 // 0.2.0 moved the domain constants here from @assetlake/sanity-schema, so the npm package has no
 // Studio dependency.
-import type { ImageCropMode, ImageFitMode, ImagePurpose } from "./constants";
+import type {
+  ImageCropMode,
+  ImageFitMode,
+  ImagePurpose,
+  ImageStatus,
+} from "./constants";
 
 export * from "./constants";
 
@@ -66,6 +71,23 @@ export interface ResponsiveImage {
   lqip: string | null;
 }
 
+// A review decides between these two. Upload never returns "rejected", so AssetLakeImageResult
+// keeps its narrower status and a transition reports the full one.
+export type ReviewOutcomeStatus = Extract<ImageStatus, "ready" | "rejected">;
+
+export interface TransitionStatusInput {
+  id: string;
+  to: ReviewOutcomeStatus;
+  reviewer: { id: string };
+}
+
+export interface ImageStatusTransition {
+  id: string;
+  from: ImageStatus;
+  to: ReviewOutcomeStatus;
+  outcome: "applied" | "unchanged";
+}
+
 export interface DeleteImageInput {
   id: string;
   actorEntity: EntityRef;
@@ -85,7 +107,8 @@ export type AssetLakeErrorCode =
   | "UPLOAD_FAILED"
   | "METADATA_CREATE_FAILED"
   | "SOURCE_URL_NOT_ALLOWED"
-  | "SOURCE_FETCH_FAILED";
+  | "SOURCE_FETCH_FAILED"
+  | "INVALID_STATUS_TRANSITION";
 
 // HTTP envelope: produced by demo-web route handlers (B03), consumed by the demo UI (B04).
 export type ApiErrorCode =
@@ -104,6 +127,7 @@ export const UPLOAD_FORM_FIELDS = {
   file: "file",
   purpose: "purpose",
   alt: "alt",
+  review: "review",
 } as const;
 export const IDEMPOTENCY_HEADER = "Idempotency-Key";
 export const RESPONSIVE_WIDTHS = [256, 512, 768] as const;

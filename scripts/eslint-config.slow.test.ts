@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import { ESLint, type Linter } from "eslint";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { ROOT } from "./support/pack-workspace";
 
@@ -30,7 +30,18 @@ const untyped = new ESLint({
     rules: Object.fromEntries(TYPED_RULES.map((rule) => [rule, "off"])),
   },
 });
-const eslint = new ESLint({ cwd: ROOT });
+// lintText lints a snippet under a real path. In single-run mode (inferred from CI=true)
+// typescript-eslint builds its program from the files on disk, so a `project`-typed file would be
+// parsed from disk against the snippet's text. CI=true is pinned so local runs match GitHub's.
+vi.stubEnv("CI", "true");
+const eslint = new ESLint({
+  cwd: ROOT,
+  overrideConfig: {
+    languageOptions: {
+      parserOptions: { disallowAutomaticSingleRunInference: true },
+    },
+  },
+});
 let configs: Record<keyof typeof files, Linter.Config>;
 
 function severity(config: Linter.Config, rule: string) {

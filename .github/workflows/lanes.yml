@@ -1,11 +1,10 @@
 name: lanes
 
-# Network lanes against the `test` dataset. Secrets live only on the `sanity-test` environment,
-# which is limited to main. Never add pull_request_target: it would hand PR code the secrets.
+# Network lanes against the `test` dataset, started by hand (no schedule: each run writes to Sanity).
+# Secrets live only on the `sanity-test` environment, which is limited to main. Never add
+# pull_request_target: it would hand PR code the secrets.
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "17 3 * * *"
 
 permissions:
   contents: read

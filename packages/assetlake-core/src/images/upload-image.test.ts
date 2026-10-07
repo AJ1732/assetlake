@@ -48,7 +48,7 @@ describe("images.upload", () => {
   });
 
   it("marks the record for review when the policy requires it", async () => {
-    const { assetLake } = createScenario({ requiresReview: true });
+    const { assetLake } = createScenario({ policy: { requiresReview: true } });
     await expect(assetLake.images.upload(input())).resolves.toMatchObject({
       status: "review",
     });
@@ -63,7 +63,7 @@ describe("images.upload", () => {
     ).rejects.toMatchObject({
       code: "UNSUPPORTED_IMAGE_TYPE",
     });
-    expect(store.calls.uploadImageAsset).toBeUndefined();
+    expect(store.callCount("uploadImageAsset")).toBe(0);
     expect(events()).toContain("ASSET_UPLOAD_REJECTED");
   });
 
@@ -77,7 +77,9 @@ describe("images.upload", () => {
   });
 
   it("deletes the uploaded asset when dimensions violate the policy, and creates no record", async () => {
-    const { assetLake, store, events } = createScenario({ minWidth: 1000 });
+    const { assetLake, store, events } = createScenario({
+      policy: { minWidth: 1000 },
+    });
     await expect(assetLake.images.upload(input())).rejects.toMatchObject({
       code: "DIMENSIONS_OUT_OF_RANGE",
     });
@@ -135,7 +137,7 @@ describe("images.upload", () => {
     );
 
     expect(second).toEqual(first);
-    expect(store.calls.uploadImageAsset).toBe(1);
+    expect(store.callCount("uploadImageAsset")).toBe(1);
     expect(events()).toContain("ASSET_UPLOAD_REPLAYED");
   });
 

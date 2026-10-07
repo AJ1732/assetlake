@@ -8,11 +8,10 @@ const REVIEWER = { id: "gReviewer1" };
 const owner = { type: "user", id: "user-demo-001" };
 
 function reviewScenario(reviewerIds: string[] | null = [REVIEWER.id]) {
-  return createScenario(
-    { requiresReview: true },
-    undefined,
-    reviewerIds ? { review: { reviewerIds } } : {},
-  );
+  return createScenario({
+    policy: { requiresReview: true },
+    config: reviewerIds ? { review: { reviewerIds } } : {},
+  });
 }
 
 async function uploadForReview(scenario: ReturnType<typeof reviewScenario>) {
@@ -69,7 +68,7 @@ describe("images.transitionStatus", () => {
     await expect(
       scenario.assetLake.images.transitionStatus(input),
     ).resolves.toMatchObject({ from: "ready", outcome: "unchanged" });
-    expect(scenario.store.calls.updateImageStatus).toBe(1);
+    expect(scenario.store.callCount("updateImageStatus")).toBe(1);
   });
 
   it.each([
@@ -90,7 +89,7 @@ describe("images.transitionStatus", () => {
       }),
     ).rejects.toMatchObject({ code: "INVALID_STATUS_TRANSITION" });
     expect(scenario.store.images.get(image.id)?.status).toBe(from);
-    expect(scenario.store.calls.updateImageStatus).toBeUndefined();
+    expect(scenario.store.callCount("updateImageStatus")).toBe(0);
   });
 
   it("refuses a reviewer outside the allowlist and writes nothing", async () => {

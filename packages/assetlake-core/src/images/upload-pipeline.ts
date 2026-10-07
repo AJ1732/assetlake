@@ -1,22 +1,25 @@
+import type { Clock } from "../clock";
 import type {
+  AssetLakeErrorCode,
   AssetLakeImageResult,
   EntityRef,
   ImagePurpose,
 } from "../contracts";
 import { AssetLakeError, isAssetLakeError } from "../errors/asset-lake-error";
-import type { LogFields, Logger } from "../logging/logger";
+import type { LogEvent, LogFields, Logger, LogLevel } from "../logging/logger";
 import type {
   AssetLakeStore,
+  ImageRecordView,
   PolicyRecord,
   StoredAsset,
 } from "../store/asset-lake-store";
 import { compensateAsset } from "./compensate";
-import { type IdGenerator, resolveImageIdentity } from "./image-id";
-import { normalizeImage, toResultStatus } from "./normalize";
-
-export interface Clock {
-  now(): Date;
-}
+import {
+  type IdGenerator,
+  type ImageIdentity,
+  resolveImageIdentity,
+} from "./image-id";
+import { normalizeImage, toImageResult } from "./normalize";
 
 export interface UploadDependencies {
   store: AssetLakeStore;
@@ -46,144 +49,222 @@ export interface UploadSource {
   validateBeforeUpload(policy: PolicyRecord): Promise<void> | void;
   storeAsset(): Promise<StoredAsset>;
   validateAfterUpload(policy: PolicyRecord, asset: StoredAsset): void;
+  /** Extra fields for the closing log line when this source's upload fails. */
+  failureLogFields?(error: AssetLakeError): LogFields;
+}
+
+type UploadStage =
+  | "lookup"
+  | "before-upload"
+  | "store"
+  | "after-upload"
+  | "record";
+
+// The input broke a policy. Every other failure is ours or Sanity's, and is logged as an error.
+const REJECTION_CODES: ReadonlySet<AssetLakeErrorCode> = new Set([
+  "UNSUPPORTED_IMAGE_TYPE",
+  "FILE_TOO_LARGE",
+  "SIGNATURE_MISMATCH",
+  "DIMENSIONS_OUT_OF_RANGE",
+  "SOURCE_URL_NOT_ALLOWED",
+]);
+
+class UploadStepError extends Error {
+  constructor(
+    readonly stage: UploadStage,
+    cause: unknown,
+  ) {
+    super(`Upload failed at ${stage}`, { cause });
+  }
+}
+
+async function step<T>(
+  stage: UploadStage,
+  run: () => Promise<T> | T,
+): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    throw new UploadStepError(stage, error);
+  }
+}
+
+function toAssetLakeError({ stage, cause }: UploadStepError): AssetLakeError {
+  if (isAssetLakeError(cause)) return cause;
+  return stage === "record"
+    ? new AssetLakeError(
+        "METADATA_CREATE_FAILED",
+        "The image record could not be created.",
+        { cause },
+      )
+    : new AssetLakeError("UPLOAD_FAILED", "The image could not be stored.", {
+        cause,
+      });
+}
+
+/** Logs the start now and returns the one function that logs how the attempt ended. */
+function beginAttempt(logger: Logger, clock: Clock, context: LogFields) {
+  const startedAt = clock.now().getTime();
+  logger.log("info", "ASSET_UPLOAD_STARTED", context);
+  return function close(
+    level: LogLevel,
+    event: LogEvent,
+    fields: LogFields = {},
+  ): void {
+    logger.log(level, event, {
+      ...context,
+      ...fields,
+      durationMs: clock.now().getTime() - startedAt,
+    });
+  };
 }
 
 async function resolvePolicy(
   store: AssetLakeStore,
-  request: UploadRequest,
+  { applicationId, policyId }: UploadRequest,
 ): Promise<PolicyRecord> {
-  const application = await store.findApplication(request.applicationId);
-  if (!application) {
+  const found = await store.findApplicationPolicy({ applicationId, policyId });
+  if (!found) {
     throw new AssetLakeError(
       "APPLICATION_NOT_FOUND",
-      `Unknown application ${request.applicationId}.`,
+      `Unknown application ${applicationId}.`,
     );
   }
-  const policyId = request.policyId ?? application.defaultPolicyId;
-  const policy = policyId ? await store.findPolicy(policyId) : null;
-  if (!policy) {
+  if (!found.policy) {
     throw new AssetLakeError(
       "POLICY_NOT_FOUND",
-      `No upload policy for application ${application.slug}.`,
+      `No upload policy for application ${found.applicationSlug}.`,
     );
   }
-  return policy;
+  return found.policy;
 }
 
-/** Handoff §11.3 sequence, plus idempotent replay (Q10) and reference-aware compensation. */
+type Lookup =
+  | { replay: ImageRecordView }
+  | { replay: null; policy: PolicyRecord };
+
+/** Both reads at once. A replay wins even when the policy lookup fails or has changed since. */
+async function lookUp(
+  store: AssetLakeStore,
+  request: UploadRequest,
+  identity: ImageIdentity,
+): Promise<Lookup> {
+  const [replay, policy] = await Promise.allSettled([
+    identity.idempotencyKeyHash ? store.findImage(identity.id) : null,
+    resolvePolicy(store, request),
+  ]);
+  if (replay.status === "rejected") throw replay.reason;
+  if (replay.value) return { replay: replay.value };
+  if (policy.status === "rejected") throw policy.reason;
+  return { replay: null, policy: policy.value };
+}
+
+/** "replayed" when a concurrent retry with the same key created the record first. */
+async function recordImage(
+  { store, logger, clock }: UploadDependencies,
+  {
+    request,
+    identity,
+    policy,
+    asset,
+  }: {
+    request: UploadRequest;
+    identity: ImageIdentity;
+    policy: PolicyRecord;
+    asset: StoredAsset;
+  },
+): Promise<{ outcome: "created" | "replayed"; result: AssetLakeImageResult }> {
+  const status = policy.requiresReview ? "review" : "ready";
+  const created = await store.createImage({
+    id: identity.id,
+    assetId: asset.assetId,
+    applicationId: request.applicationId,
+    policyId: policy.id,
+    purpose: request.purpose,
+    entity: request.entity,
+    alt: request.alt,
+    tags: request.tags ?? [],
+    status,
+    uploadedAt: clock.now().toISOString(),
+    idempotencyKeyHash: identity.idempotencyKeyHash,
+  });
+  if (created === "created") {
+    return {
+      outcome: "created",
+      result: normalizeImage(identity.id, status, asset),
+    };
+  }
+
+  const winner = await store.findImage(identity.id);
+  if (!winner)
+    throw new Error(`Image ${identity.id} reported as existing but not found`);
+  await compensateAsset(store, logger, asset.assetId);
+  return { outcome: "replayed", result: toImageResult(winner) };
+}
+
+/**
+ * Look up the replay and policy, validate, store the asset, validate again, record it. Every
+ * attempt logs one closing event, and an asset stored by a failed attempt is deleted again.
+ */
 export async function runUploadPipeline(
-  { store, logger, clock, ids }: UploadDependencies,
+  dependencies: UploadDependencies,
   request: UploadRequest,
   source: UploadSource,
 ): Promise<AssetLakeImageResult> {
-  const startedAt = clock.now().getTime();
-  const elapsed = () => clock.now().getTime() - startedAt;
+  const { store, logger, clock, ids } = dependencies;
   const identity = resolveImageIdentity(
     request.actorId,
     request.idempotencyKey,
     ids,
   );
-  const context = {
+  const close = beginAttempt(logger, clock, {
     imageId: identity.id,
     applicationId: request.applicationId,
     purpose: request.purpose,
     ...source.logFields,
-  };
-  logger.log("info", "ASSET_UPLOAD_STARTED", context);
-
-  if (identity.idempotencyKeyHash) {
-    const existing = await store.findImage(identity.id);
-    if (existing) {
-      logger.log("info", "ASSET_UPLOAD_REPLAYED", {
-        ...context,
-        durationMs: elapsed(),
-      });
-      return normalizeImage(
-        existing.id,
-        toResultStatus(existing.status),
-        existing.asset,
-      );
-    }
-  }
-
-  const policy = await resolvePolicy(store, request);
-  try {
-    await source.validateBeforeUpload(policy);
-  } catch (error) {
-    const code = isAssetLakeError(error) ? error.code : "UNEXPECTED";
-    logger.log("warn", "ASSET_UPLOAD_REJECTED", {
-      ...context,
-      code,
-      durationMs: elapsed(),
-    });
-    throw error;
-  }
-
-  const asset = await source.storeAsset();
-  const status = policy.requiresReview ? "review" : "ready";
-
-  try {
-    source.validateAfterUpload(policy, asset);
-    const outcome = await store.createImage({
-      id: identity.id,
-      assetId: asset.assetId,
-      applicationId: request.applicationId,
-      policyId: policy.id,
-      purpose: request.purpose,
-      entity: request.entity,
-      alt: request.alt,
-      tags: request.tags ?? [],
-      status,
-      uploadedAt: clock.now().toISOString(),
-      idempotencyKeyHash: identity.idempotencyKeyHash,
-    });
-
-    if (outcome === "exists") {
-      const winner = await store.findImage(identity.id);
-      if (!winner)
-        throw new Error(
-          `Image ${identity.id} reported as existing but not found`,
-        );
-      await compensateAsset(store, logger, asset.assetId);
-      logger.log("info", "ASSET_UPLOAD_REPLAYED", {
-        ...context,
-        durationMs: elapsed(),
-      });
-      return normalizeImage(
-        winner.id,
-        toResultStatus(winner.status),
-        winner.asset,
-      );
-    }
-  } catch (error) {
-    await compensateAsset(store, logger, asset.assetId);
-    if (isAssetLakeError(error)) {
-      logger.log("warn", "ASSET_UPLOAD_REJECTED", {
-        ...context,
-        code: error.code,
-        stage: "after-upload",
-        assetId: asset.assetId,
-        durationMs: elapsed(),
-      });
-      throw error;
-    }
-    logger.log("error", "ASSET_METADATA_CREATE_FAILED", {
-      ...context,
-      assetId: asset.assetId,
-      durationMs: elapsed(),
-    });
-    throw new AssetLakeError(
-      "METADATA_CREATE_FAILED",
-      "The image record could not be created.",
-      { cause: error },
-    );
-  }
-
-  logger.log("info", "ASSET_UPLOAD_COMPLETED", {
-    ...context,
-    assetId: asset.assetId,
-    status,
-    durationMs: elapsed(),
   });
-  return normalizeImage(identity.id, status, asset);
+  let storedAssetId: string | undefined;
+
+  try {
+    const lookup = await step("lookup", () => lookUp(store, request, identity));
+    if (lookup.replay) {
+      close("info", "ASSET_UPLOAD_REPLAYED");
+      return toImageResult(lookup.replay);
+    }
+    const { policy } = lookup;
+
+    await step("before-upload", () => source.validateBeforeUpload(policy));
+    const asset = await step("store", () => source.storeAsset());
+    storedAssetId = asset.assetId;
+    await step("after-upload", () => source.validateAfterUpload(policy, asset));
+    const { outcome, result } = await step("record", () =>
+      recordImage(dependencies, { request, identity, policy, asset }),
+    );
+
+    if (outcome === "replayed") {
+      close("info", "ASSET_UPLOAD_REPLAYED");
+    } else {
+      close("info", "ASSET_UPLOAD_COMPLETED", {
+        assetId: asset.assetId,
+        status: result.status,
+      });
+    }
+    return result;
+  } catch (error) {
+    if (!(error instanceof UploadStepError)) throw error;
+    if (storedAssetId) await compensateAsset(store, logger, storedAssetId);
+    const failure = toAssetLakeError(error);
+    const rejected = REJECTION_CODES.has(failure.code);
+    close(
+      rejected ? "warn" : "error",
+      rejected ? "ASSET_UPLOAD_REJECTED" : "ASSET_UPLOAD_FAILED",
+      {
+        code: failure.code,
+        stage: error.stage,
+        ...(storedAssetId ? { assetId: storedAssetId } : {}),
+        ...source.failureLogFields?.(failure),
+      },
+    );
+    throw failure;
+  }
 }

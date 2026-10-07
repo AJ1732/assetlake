@@ -33,7 +33,10 @@ describe("createAssetLake facade", () => {
         entity,
         purpose: "avatar",
       }),
-    ).resolves.toEqual(latest);
+    ).resolves.toEqual({
+      ...latest,
+      source: { asset: { _ref: latest.assetId } },
+    });
     await expect(
       scenario.assetLake.images.findLatestForEntity({
         entity,
@@ -44,8 +47,9 @@ describe("createAssetLake facade", () => {
 
   it("skips newer images in review or rejected until one is approved", async () => {
     const reviewer = { id: "gReviewer1" };
-    const scenario = createScenario({ requiresReview: true }, undefined, {
-      review: { reviewerIds: [reviewer.id] },
+    const scenario = createScenario({
+      policy: { requiresReview: true },
+      config: { review: { reviewerIds: [reviewer.id] } },
     });
     const decide = (id: string, to: "ready" | "rejected") =>
       scenario.assetLake.images.transitionStatus({ id, to, reviewer });

@@ -2,10 +2,11 @@ import { createClient } from "@sanity/client";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { createAssetLake } from "../../src/create-asset-lake";
+import { createImageUrls } from "../../src/delivery/image-urls";
 import { createPngBytes } from "../../src/testing/image-fixtures";
 import { liveTarget } from "./live-target";
 
-// Eval lane (handoff §21.2) against the synthetic `test` dataset, never production.
+// Eval lane: runs against the synthetic `test` dataset, never production.
 const { dataset } = liveTarget;
 const APPLICATION_ID = "assetlake-application-campus-demo";
 const entity = { type: "user", id: `user-live-${Date.now()}` };
@@ -80,6 +81,22 @@ describe(`upload chain against "${dataset}"`, () => {
     );
     expect(new URL(url).host).toBe("cdn.sanity.io");
     expect(url).toMatch(/w=256&h=256/);
+
+    // Callers holding findLatestForEntity's source build every preset URL without another read.
+    const latest = await timed("findLatest", () =>
+      assetLake.images.findLatestForEntity({ entity, purpose: "avatar" }),
+    );
+    expect(latest).toMatchObject({
+      id: result.id,
+      source: { asset: { _ref: result.assetId } },
+    });
+    const presets = await timed("listPresets", () => assetLake.presets.list());
+    const localUrls = createImageUrls(liveTarget);
+    for (const { slug, transform } of presets) {
+      await expect(
+        assetLake.images.url(result.id, { preset: slug }),
+      ).resolves.toBe(localUrls.buildUrl(latest!.source, transform));
+    }
 
     const response = await timed("cdnGet", () => fetch(url));
     expect(response.status).toBe(200);

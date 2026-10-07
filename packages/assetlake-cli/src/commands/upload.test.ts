@@ -80,7 +80,7 @@ describe("upload", () => {
         options({ source: "people.png" }),
       ),
     ).rejects.toThrow("people.png is not an image");
-    expect(store.calls.uploadImageAsset).toBeUndefined();
+    expect(store.callCount("uploadImageAsset")).toBe(0);
   });
 
   it("records the entity, alt text and tags", async () => {
@@ -129,7 +129,7 @@ describe("upload", () => {
     );
 
     expect(result.output).toMatchObject({ status: "ready", width: 300 });
-    expect(store.calls.uploadImageAssetFromUrl).toBe(1);
+    expect(store.callCount("uploadImageAssetFromUrl")).toBe(1);
   });
 
   it("refuses a plain http URL as a usage error", async () => {
@@ -141,7 +141,7 @@ describe("upload", () => {
     );
 
     await expect(attempt).rejects.toBeInstanceOf(UsageError);
-    expect(store.calls.uploadImageAssetFromUrl).toBeUndefined();
+    expect(store.callCount("uploadImageAssetFromUrl")).toBe(0);
   });
 
   it("rejects an unknown purpose as a usage error", async () => {

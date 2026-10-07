@@ -1,5 +1,9 @@
-import { createAssetLake, type PresetRecord } from "@assetlake/core";
-import { InMemoryStore, silentLogger } from "@assetlake/core/testing";
+import { createAssetLake } from "@assetlake/core";
+import {
+  InMemoryStore,
+  type PresetRecord,
+  silentLogger,
+} from "@assetlake/core/testing";
 import { describe, expect, it } from "vitest";
 
 import {

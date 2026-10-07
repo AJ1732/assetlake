@@ -10,12 +10,14 @@ Works against any Sanity project you own: you bring the project id, dataset and 
 
 ## Entry points
 
-| Import                      | Where                               | What                                                                                     |
-| --------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------- |
-| `@assetlake/core`           | Server only (holds the write token) | `createAssetLake` (upload, `uploadFromUrl`, URLs, delete, setup), contract types, errors |
-| `@assetlake/core/url`       | Browser safe                        | `createImageUrls` (`buildUrl`, `buildResponsive`), `responsiveWidths`                    |
-| `@assetlake/core/contracts` | Anywhere                            | Types and constants only (document types, enums, HTTP envelope, `Idempotency-Key`)       |
-| `@assetlake/core/testing`   | Tests (Node)                        | `InMemoryStore`, `createPngBytes`, `signatureBytes`, `createManualClock`, `silentLogger` |
+| Import                      | Where                               | What                                                                                                        |
+| --------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `@assetlake/core`           | Server only (holds the write token) | `createAssetLake` (upload, `uploadFromUrl`, URLs, delete, setup), contract types, errors                    |
+| `@assetlake/core/url`       | Browser safe                        | `createImageUrls` (`buildUrl`, `buildResponsive`), `responsiveWidths`                                       |
+| `@assetlake/core/contracts` | Anywhere                            | Types and constants only (document types, enums, HTTP envelope, `Idempotency-Key`)                          |
+| `@assetlake/core/testing`   | Tests (Node)                        | `InMemoryStore`, `createPngBytes`, `signatureBytes`, `createManualClock`, `silentLogger`, seed record types |
+
+The store port and its record types aren't exported from the root (only the seed records, from `/testing`), so they can change without a breaking release. `AssetLakeOverrides.store` takes any object with the same methods; tests pass `InMemoryStore`.
 
 `@assetlake/core/contracts` also exports `SANITY_PROJECT_ID_PATTERN` and `SANITY_DATASET_PATTERN` (0.3.1+): the rules core's config checks `projectId` and `dataset` against, so an app can validate its environment the same way.
 
@@ -51,6 +53,33 @@ await assetLake.images.delete({
   actorEntity: { type: "user", id: session.userId },
 });
 ```
+
+## Preset URLs and caching
+
+`images.url` and `images.responsive` each read the image's source and resolve the preset. To render several presets of one image, read once and build the URLs yourself: `findLatestForEntity` returns the image's `source` (asset reference, hotspot, crop), and `presets.list()` returns every preset's transform. That is 2 reads however many presets you show:
+
+```ts
+import { createImageUrls } from "@assetlake/core/url";
+
+const image = await assetLake.images.findLatestForEntity({
+  entity: { type: "user", id: session.userId },
+  purpose: "avatar",
+});
+const presets = await assetLake.presets.list();
+const urls = createImageUrls({ projectId, dataset });
+const variants = image
+  ? presets.map(({ slug, transform }) => ({
+      slug,
+      url: urls.buildUrl(image.source, transform),
+    }))
+  : [];
+```
+
+Preset lookups are cached in process for `presetCacheTtlMs` (default 60 s), so an edited preset applies within that time. Concurrent lookups of the same slug share one read, `presets.list()` fills the cache for later lookups, and an unknown slug is remembered for 5 s (or `presetCacheTtlMs` if lower) so request input can't turn every request into a Sanity read. `presetCacheTtlMs: 0` turns caching off.
+
+## Quota counts
+
+`images.countUploadsSince` and `images.countUploadsForEntity` each run a GROQ `count()` over the image documents on every call. They count every status, including `review`, `rejected` and `failed` records, so a quota built on them limits attempts that made a record, not only published images. A quota check that runs both costs two reads per upload; cache or rate-limit them if that matters at your volume.
 
 ## Set up a project
 
@@ -174,7 +203,7 @@ const src = urls.buildUrl(image.assetId, {
 ## Upload sequence
 
 1. Same actor + same `idempotencyKey` returns the existing record without uploading.
-2. Resolve application, then its policy.
+2. Resolve the application and its policy (the requested `policyId`, else the application's default) in one query, at the same time as step 1.
 3. Reject a disallowed declared MIME, an oversized body, or bytes whose signature (`file-type`) does not match the declared MIME. Nothing reaches Sanity.
 4. Upload the asset with `client.assets.upload("image", ...)`.
 5. Check dimensions against the policy, then create the `assetLakeImage` record (`review` if the policy requires it).
@@ -182,15 +211,21 @@ const src = urls.buildUrl(image.assetId, {
 
 `uploadFromUrl` follows the same sequence, except step 3 only checks the URL against `remoteUploads.allowedHosts`; the type, size and dimension checks run at step 5, on Sanity's analysis of the fetched file.
 
+Every attempt logs `ASSET_UPLOAD_STARTED` and then exactly one closing event: `ASSET_UPLOAD_COMPLETED`, `ASSET_UPLOAD_REPLAYED`, `ASSET_UPLOAD_REJECTED` (warn: the file or URL broke the policy) or `ASSET_UPLOAD_FAILED` (error: a missing application or policy, or a Sanity failure). Failures carry `code` and `stage` (`lookup`, `before-upload`, `store`, `after-upload`, `record`). A URL upload that timed out also carries `mayExist: true`.
+
 Ids are `assetlake-image-<uuid>` or `assetlake-image-<sha256(actor:key)>`, never dotted, so tokenless public reads can see them.
 
 ## Errors
 
-`AssetLakeError.code` is one of the `AssetLakeErrorCode` values in `contracts.ts`. Messages are safe to show users; causes carry the underlying Sanity error.
+`AssetLakeError.code` is one of the `AssetLakeErrorCode` values in `contracts.ts`. Messages are safe to show users; causes carry the underlying Sanity error. Upload and URL upload only ever reject with an `AssetLakeError`: an unexpected failure becomes `UPLOAD_FAILED`, or `METADATA_CREATE_FAILED` when the record write fails.
+
+`images.delete` resolves once the record is gone. If the asset can't be deleted afterwards, the delete still succeeds and `ASSET_DELETE_COMPLETED` is logged as a warning with `assetDeleted: false` and the reason.
 
 ## Boundary
 
 No `next`, React, Express, UI, or `@assetlake/sanity-schema` imports (ESLint `no-restricted-imports` + `src/dependency-boundary.test.ts`). The schema package depends on core for the constants, not the other way round, so the npm package carries no Studio code. `@assetlake/core/url` additionally cannot reach `@sanity/client`, `node:*`, or the write path (`src/url-boundary.test.ts`).
+
+`@sanity/client` loads on the first Sanity call, not when `createAssetLake` runs (it costs about 300 ms to import). Code that passes its own store, like tests on `InMemoryStore`, never loads it (`src/client-boundary.test.ts`). The built package keeps it in its own chunk under `dist/`.
 
 ## Build and publish
 

@@ -2,28 +2,20 @@ import {
   type AssetLakeConfigInput,
   parseAssetLakeConfig,
 } from "./client/config";
-import type {
-  AssetLakeImageResult,
-  EntityRef,
-  ImagePurpose,
-  ResponsiveImage,
-} from "./contracts";
+import { type Clock, systemClock } from "./clock";
+import type { EntityRef } from "./contracts";
+import { createImageDelivery } from "./delivery/image-delivery";
 import { createImageUrls } from "./delivery/image-urls";
-import { AssetLakeError } from "./errors/asset-lake-error";
 import { createDeleteImage } from "./images/delete-image";
 import { cryptoIdGenerator, type IdGenerator } from "./images/image-id";
-import { normalizeImage, toResultStatus } from "./images/normalize";
 import { createTransitionStatus } from "./images/transition-status";
 import { createUploadImageFromUrl } from "./images/upload-from-url";
-import { type Clock, createUploadImage } from "./images/upload-image";
+import { createUploadImage } from "./images/upload-image";
 import { createJsonLogger, type Logger } from "./logging/logger";
 import { createPresetResolver } from "./presets/preset-resolver";
 import type { SetupPlan } from "./setup/setup-plan";
 import type { AssetLakeStore } from "./store/asset-lake-store";
-import {
-  createSanityStore,
-  createSanityWriteClient,
-} from "./store/sanity-store";
+import { createLazySanityStore } from "./store/lazy-sanity-store";
 import type { SetupMode, SetupStore } from "./store/setup-store";
 
 export interface AssetLakeOverrides {
@@ -33,16 +25,13 @@ export interface AssetLakeOverrides {
   ids?: IdGenerator;
 }
 
-const systemClock: Clock = { now: () => new Date() };
-
 /** Server-only entry point (holds the write token). Browser code uses "@assetlake/core/url". */
 export function createAssetLake(
   configInput: AssetLakeConfigInput,
   overrides: AssetLakeOverrides = {},
 ) {
   const config = parseAssetLakeConfig(configInput);
-  const store =
-    overrides.store ?? createSanityStore(createSanityWriteClient(config));
+  const store = overrides.store ?? createLazySanityStore(config);
   const logger = overrides.logger ?? createJsonLogger();
   const clock = overrides.clock ?? systemClock;
   const ids = overrides.ids ?? cryptoIdGenerator;
@@ -58,17 +47,8 @@ export function createAssetLake(
     dataset: config.dataset,
   });
 
+  const delivery = createImageDelivery({ store, presets, urls });
   const uploadDependencies = { store, logger, clock, ids };
-
-  async function requireImage(id: string) {
-    const image = await store.findImage(id);
-    if (!image)
-      throw new AssetLakeError(
-        "IMAGE_NOT_FOUND",
-        `Image ${id} does not exist.`,
-      );
-    return image;
-  }
 
   return {
     images: {
@@ -84,15 +64,7 @@ export function createAssetLake(
         reviewerIds: config.review?.reviewerIds ?? [],
       }),
 
-      async findLatestForEntity(query: {
-        entity: EntityRef;
-        purpose: ImagePurpose;
-      }): Promise<AssetLakeImageResult | null> {
-        const image = await store.findLatestReadyImage(query);
-        return image
-          ? normalizeImage(image.id, toResultStatus(image.status), image.asset)
-          : null;
-      },
+      findLatestForEntity: delivery.findLatestForEntity,
 
       countUploadsSince: ({
         applicationId,
@@ -106,34 +78,8 @@ export function createAssetLake(
       countUploadsForEntity: (entity: EntityRef) =>
         store.countImagesForEntity(entity),
 
-      async url(
-        imageId: string,
-        { preset }: { preset: string },
-      ): Promise<string> {
-        const [image, transform] = await Promise.all([
-          requireImage(imageId),
-          presets.get(preset),
-        ]);
-        return urls.buildUrl(image.source, transform);
-      },
-
-      async responsive(
-        imageId: string,
-        options: { preset: string; sizes?: string },
-      ): Promise<ResponsiveImage> {
-        const [image, transform] = await Promise.all([
-          requireImage(imageId),
-          presets.get(options.preset),
-        ]);
-        return urls.buildResponsive(image.source, transform, {
-          sizes: options.sizes,
-          lqip: image.asset.lqip,
-          dimensions: { width: image.asset.width, height: image.asset.height },
-        });
-      },
-
-      buildUrl: urls.buildUrl,
-      buildResponsive: urls.buildResponsive,
+      url: delivery.url,
+      responsive: delivery.responsive,
     },
     presets: {
       get: presets.get,

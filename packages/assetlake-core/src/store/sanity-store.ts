@@ -14,13 +14,13 @@ import type {
   StoredAsset,
 } from "./asset-lake-store";
 import {
-  APPLICATION_BY_ID_QUERY,
+  APPLICATION_POLICY_QUERY,
   COUNT_IMAGES_FOR_ENTITY_QUERY,
   COUNT_IMAGES_SINCE_QUERY,
   EXISTING_IDS_QUERY,
   IMAGE_BY_ID_QUERY,
+  IMAGE_SOURCE_BY_ID_QUERY,
   LATEST_READY_IMAGE_FOR_ENTITY_QUERY,
-  POLICY_BY_ID_QUERY,
   PRESET_BY_SLUG_QUERY,
   PRESETS_QUERY,
 } from "./queries";
@@ -92,11 +92,15 @@ export function createSanityStore(
   }
 
   return {
-    findApplication: (id) => client.fetch(APPLICATION_BY_ID_QUERY, { id }),
-    findPolicy: (id) => client.fetch(POLICY_BY_ID_QUERY, { id }),
+    findApplicationPolicy: ({ applicationId, policyId }) =>
+      client.fetch(APPLICATION_POLICY_QUERY, {
+        applicationId,
+        policyId: policyId ?? null,
+      }),
     findPresetBySlug: (slug) => client.fetch(PRESET_BY_SLUG_QUERY, { slug }),
     listPresets: () => client.fetch(PRESETS_QUERY),
     findImage: (id) => client.fetch(IMAGE_BY_ID_QUERY, { id }),
+    findImageSource: (id) => client.fetch(IMAGE_SOURCE_BY_ID_QUERY, { id }),
     findLatestReadyImage: ({ entity, purpose }) =>
       client.fetch(LATEST_READY_IMAGE_FOR_ENTITY_QUERY, {
         entityType: entity.type,

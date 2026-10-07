@@ -31,13 +31,7 @@ const PRESET_PROJECTION = `{
   autoFormat
 }`;
 
-export const APPLICATION_BY_ID_QUERY = `*[_type == "${DOCUMENT_TYPES.application}" && _id == $id][0]{
-  "id": _id,
-  "slug": slug.current,
-  "defaultPolicyId": defaultPolicy._ref
-}`;
-
-export const POLICY_BY_ID_QUERY = `*[_type == "${DOCUMENT_TYPES.policy}" && _id == $id][0]{
+const POLICY_PROJECTION = `{
   "id": _id,
   allowedMimeTypes,
   maxFileSizeBytes,
@@ -48,11 +42,29 @@ export const POLICY_BY_ID_QUERY = `*[_type == "${DOCUMENT_TYPES.policy}" && _id 
   "requiresReview": coalesce(requiresReview, false)
 }`;
 
+// One read per upload. Inside the projection `^` is the application, so a null $policyId falls
+// back to its default policy reference.
+export const APPLICATION_POLICY_QUERY = `*[_type == "${DOCUMENT_TYPES.application}" && _id == $applicationId][0]{
+  "applicationSlug": slug.current,
+  "policy": *[
+    _type == "${DOCUMENT_TYPES.policy}" && _id == coalesce($policyId, ^.defaultPolicy._ref)
+  ][0]${POLICY_PROJECTION}
+}`;
+
 export const PRESET_BY_SLUG_QUERY = `*[_type == "${DOCUMENT_TYPES.preset}" && slug.current == $slug][0]${PRESET_PROJECTION}`;
 
 export const PRESETS_QUERY = `*[_type == "${DOCUMENT_TYPES.preset}"] | order(slug.current asc)${PRESET_PROJECTION}`;
 
 export const IMAGE_BY_ID_QUERY = `*[_type == "${DOCUMENT_TYPES.image}" && _id == $id][0]${IMAGE_VIEW_PROJECTION}`;
+
+export const IMAGE_SOURCE_BY_ID_QUERY = `*[_type == "${DOCUMENT_TYPES.image}" && _id == $id][0]{
+  "source": image{asset{_ref}, hotspot, crop},
+  ...image.asset->{
+    "width": metadata.dimensions.width,
+    "height": metadata.dimensions.height,
+    "lqip": metadata.lqip
+  }
+}`;
 
 export const LATEST_READY_IMAGE_FOR_ENTITY_QUERY = `*[
   _type == "${DOCUMENT_TYPES.image}"

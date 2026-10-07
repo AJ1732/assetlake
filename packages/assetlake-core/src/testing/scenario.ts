@@ -2,8 +2,8 @@ import type { AssetLakeConfigInput } from "../client/config";
 import { createAssetLake } from "../create-asset-lake";
 import type { LogEvent, Logger, LogLevel } from "../logging/logger";
 import type { PolicyRecord, PresetRecord } from "../store/asset-lake-store";
-import { createManualClock } from "../testing";
 import { InMemoryStore } from "./in-memory-store";
+import { createManualClock } from "./manual-clock";
 
 export const TEST_TOKEN = "sk-test-write-token-must-never-leak";
 export const APPLICATION_ID = "assetlake-application-campus-demo";
@@ -44,11 +44,17 @@ export function createRecordingLogger() {
 }
 
 /** Core wired to the in-memory store with the seeded demo application, policy and avatar preset. */
-export function createScenario(
-  policy: Partial<PolicyRecord> = {},
-  presets: PresetRecord[] = [avatarPreset],
-  config: Partial<AssetLakeConfigInput> = {},
-) {
+export interface ScenarioOptions {
+  policy?: Partial<PolicyRecord>;
+  presets?: PresetRecord[];
+  config?: Partial<AssetLakeConfigInput>;
+}
+
+export function createScenario({
+  policy = {},
+  presets = [avatarPreset],
+  config = {},
+}: ScenarioOptions = {}) {
   const store = new InMemoryStore({
     applications: [
       { id: APPLICATION_ID, slug: "campus-demo", defaultPolicyId: POLICY_ID },

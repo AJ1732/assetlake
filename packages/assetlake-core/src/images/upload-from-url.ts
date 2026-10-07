@@ -13,8 +13,8 @@ function hostOf(url: string): string {
   return URL.canParse(url) ? new URL(url).hostname : "(invalid url)";
 }
 
-// Statuses Sanity returned in the B11 spikes: 400 for an unreachable source, 422 for bytes it
-// can't decode. A 401/403 is our token, not the source.
+// Sanity's from-url endpoint answers 400 for an unreachable source and 422 for bytes it can't
+// decode. A 401/403 is our token, not the source.
 function toFetchFailure(error: unknown): AssetLakeError {
   const options = { cause: error };
   if (hasStatusCode(error, 422))
@@ -51,37 +51,32 @@ export function createUploadImageFromUrl(
   dependencies: UploadDependencies,
   allowedHosts: readonly string[],
 ) {
-  const { store, logger } = dependencies;
+  const { store } = dependencies;
 
   return function uploadImageFromUrl(
     input: UploadImageFromUrlInput,
   ): Promise<AssetLakeImageResult> {
-    const sourceHost = hostOf(input.url);
-
     async function fetchAsset(): Promise<StoredAsset> {
       try {
         return await store.uploadImageAssetFromUrl(input.url, {
           filename: input.filename,
         });
       } catch (error) {
-        // Sanity: on a timeout "the asset may already have been created".
-        if (hasStatusCode(error, 504))
-          logger.log("warn", "ASSET_UPLOAD_FAILED", {
-            applicationId: input.applicationId,
-            sourceHost,
-            mayExist: true,
-          });
         throw toFetchFailure(error);
       }
     }
 
     return runUploadPipeline(dependencies, input, {
-      logFields: { source: "url", sourceHost },
+      // Logged at the start, before the URL is checked, so a refused URL's host is on record too.
+      logFields: { source: "url", sourceHost: hostOf(input.url) },
       validateBeforeUpload: () => {
         checkSourceUrl(input.url, allowedHosts);
       },
       storeAsset: fetchAsset,
       validateAfterUpload: validateAfterRemoteUpload,
+      // Sanity: on a timeout "the asset may already have been created", so callers check first.
+      failureLogFields: (error) =>
+        hasStatusCode(error.cause, 504) ? { mayExist: true } : {},
     });
   };
 }

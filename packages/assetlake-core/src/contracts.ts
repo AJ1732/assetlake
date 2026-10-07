@@ -1,6 +1,6 @@
-// Public contract. Changing it is a contract change (docs/PLAN.md §3). Types and constants only.
-// 0.2.0 moved the domain constants here from @assetlake/sanity-schema, so the npm package has no
-// Studio dependency.
+// Public contract: every consumer compiles against it, so a change here is a breaking change for
+// them. Types and constants only. 0.2.0 moved the domain constants here from
+// @assetlake/sanity-schema, so the npm package has no Studio dependency.
 import type {
   ImageCropMode,
   ImageFitMode,
@@ -51,6 +51,18 @@ export interface AssetLakeImageResult {
   lqip: string | null;
   blurHash: string | null;
   status: "ready" | "review";
+}
+
+// Hotspot and crop travel with the asset reference so preset URLs respect the editor's focal point.
+export interface ImageSource {
+  asset: { _ref: string };
+  hotspot?: { x: number; y: number; height: number; width: number };
+  crop?: { top: number; bottom: number; left: number; right: number };
+}
+
+/** A stored image plus its source, so callers can build any preset URL without another read. */
+export interface AssetLakeImageWithSource extends AssetLakeImageResult {
+  source: ImageSource;
 }
 
 export interface ImageTransform {
@@ -110,7 +122,7 @@ export type AssetLakeErrorCode =
   | "SOURCE_FETCH_FAILED"
   | "INVALID_STATUS_TRANSITION";
 
-// HTTP envelope: produced by demo-web route handlers (B03), consumed by the demo UI (B04).
+// HTTP envelope: produced by demo-web's route handlers, consumed by its UI.
 export type ApiErrorCode =
   | AssetLakeErrorCode
   | "UNAUTHENTICATED"

@@ -7,8 +7,6 @@ import {
 import type { AssetLakeStore, StoredAsset } from "../store/asset-lake-store";
 import { runUploadPipeline, type UploadDependencies } from "./upload-pipeline";
 
-export type { Clock, UploadDependencies } from "./upload-pipeline";
-
 async function uploadAsset(
   store: AssetLakeStore,
   input: UploadImageInput,

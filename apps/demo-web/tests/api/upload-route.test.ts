@@ -43,7 +43,7 @@ describe("POST /api/assets/images: authentication", () => {
     await expectFailure(response, 401, "UNAUTHENTICATED");
     expect(actorId).toBeNull();
     expect(reserve).not.toHaveBeenCalled();
-    expect(context.store.calls.uploadImageAsset).toBeUndefined();
+    expect(context.store.callCount("uploadImageAsset")).toBe(0);
   });
 
   it("returns 401 for a forged cookie", async () => {
@@ -125,7 +125,7 @@ describe("POST /api/assets/images: validation", () => {
       filename: "a.gif",
     });
     await expectFailure(response, 400, "UNSUPPORTED_IMAGE_TYPE");
-    expect(context.store.calls.uploadImageAsset).toBeUndefined();
+    expect(context.store.callCount("uploadImageAsset")).toBe(0);
   });
 
   it("rejects JPEG bytes declared as PNG with 400 SIGNATURE_MISMATCH", async () => {
@@ -276,7 +276,7 @@ describe("POST /api/assets/images: quotas", () => {
       context.dependencies,
     );
     await expectFailure(response, 429, "RATE_LIMITED");
-    expect(context.store.calls.uploadImageAsset).toBe(5);
+    expect(context.store.callCount("uploadImageAsset")).toBe(5);
   });
 
   it("returns 429 once the global daily cap is reached", async () => {

@@ -70,4 +70,25 @@ describe("images.delete", () => {
       code: "IMAGE_NOT_FOUND",
     });
   });
+
+  it("still succeeds when the asset delete fails after the record is gone, and logs why", async () => {
+    const scenario = createScenario();
+    const image = await uploadAs(scenario, 1);
+    scenario.store.failNext("deleteAsset", new Error("Sanity unavailable"));
+
+    await expect(
+      scenario.assetLake.images.delete({ id: image.id, actorEntity: owner }),
+    ).resolves.toBeUndefined();
+    expect(scenario.store.images.has(image.id)).toBe(false);
+    expect(scenario.entries.at(-1)).toEqual({
+      level: "warn",
+      event: "ASSET_DELETE_COMPLETED",
+      fields: {
+        imageId: image.id,
+        assetId: image.assetId,
+        assetDeleted: false,
+        reason: "Sanity unavailable",
+      },
+    });
+  });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { UploadImageFromUrlInput } from "../contracts";
+import type { PolicyRecord } from "../store/asset-lake-store";
 import { createPngBytes, signatureBytes } from "../testing/image-fixtures";
 import { APPLICATION_ID, createScenario } from "../testing/scenario";
 
@@ -23,10 +24,10 @@ const input = (
 });
 
 function remoteScenario(
-  policy: Parameters<typeof createScenario>[0] = {},
+  policy: Partial<PolicyRecord> = {},
   bytes: Uint8Array = createPngBytes(600, 400),
 ) {
-  const scenario = createScenario(policy, undefined, remoteConfig);
+  const scenario = createScenario({ policy, config: remoteConfig });
   scenario.store.serveRemote(SOURCE, bytes);
   return scenario;
 }
@@ -64,7 +65,7 @@ describe("images.uploadFromUrl", () => {
         input({ url: "https://evil.example.org/photo.png" }),
       ),
     ).rejects.toMatchObject({ code: "SOURCE_URL_NOT_ALLOWED" });
-    expect(store.calls.uploadImageAssetFromUrl).toBeUndefined();
+    expect(store.callCount("uploadImageAssetFromUrl")).toBe(0);
     expect(events()).toEqual(["ASSET_UPLOAD_STARTED", "ASSET_UPLOAD_REJECTED"]);
   });
 
@@ -75,7 +76,7 @@ describe("images.uploadFromUrl", () => {
     await expect(assetLake.images.uploadFromUrl(input())).rejects.toMatchObject(
       { code: "SOURCE_URL_NOT_ALLOWED" },
     );
-    expect(store.calls.uploadImageAssetFromUrl).toBeUndefined();
+    expect(store.callCount("uploadImageAssetFromUrl")).toBe(0);
   });
 
   it.each([
@@ -128,7 +129,7 @@ describe("images.uploadFromUrl", () => {
   ])("maps %s to %s", async (_label, failure, code) => {
     const { assetLake, store } = failure
       ? remoteScenario()
-      : createScenario({}, undefined, remoteConfig);
+      : createScenario({ config: remoteConfig });
     if (failure) store.failNext("uploadImageAssetFromUrl", failure);
 
     await expect(assetLake.images.uploadFromUrl(input())).rejects.toMatchObject(
@@ -161,7 +162,7 @@ describe("images.uploadFromUrl", () => {
     );
 
     expect(second.id).toBe(first.id);
-    expect(store.calls.uploadImageAssetFromUrl).toBe(1);
+    expect(store.callCount("uploadImageAssetFromUrl")).toBe(1);
   });
 
   it("logs the source host but never the URL or its signature", async () => {

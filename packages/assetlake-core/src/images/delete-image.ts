@@ -2,10 +2,13 @@ import type { DeleteImageInput } from "../contracts";
 import { AssetLakeError } from "../errors/asset-lake-error";
 import type { Logger } from "../logging/logger";
 import type { AssetLakeStore } from "../store/asset-lake-store";
+import { deleteAssetIfUnreferenced } from "./compensate";
+import { requireImage } from "./require-image";
 
 /**
  * Removes the record, then the asset only if nothing else references it. Not a revocation: CDN
- * caches may keep serving a deleted asset for a while (handoff §12).
+ * caches may keep serving a deleted asset for a while. Once the record is gone the delete has
+ * happened, so an asset that can't be removed is logged, not thrown.
  */
 export function createDeleteImage({
   store,
@@ -18,12 +21,7 @@ export function createDeleteImage({
     id,
     actorEntity,
   }: DeleteImageInput): Promise<void> {
-    const image = await store.findImage(id);
-    if (!image)
-      throw new AssetLakeError(
-        "IMAGE_NOT_FOUND",
-        `Image ${id} does not exist.`,
-      );
+    const image = requireImage(await store.findImage(id), id);
 
     const ownsImage =
       image.entity?.type === actorEntity.type &&
@@ -35,11 +33,17 @@ export function createDeleteImage({
       );
 
     await store.deleteImage(id);
-    const assetOutcome = await store.deleteAsset(image.asset.assetId);
-    logger.log("info", "ASSET_DELETE_COMPLETED", {
-      imageId: id,
-      assetId: image.asset.assetId,
-      assetDeleted: assetOutcome === "deleted",
-    });
+    const { assetId } = image.asset;
+    const { outcome, reason } = await deleteAssetIfUnreferenced(store, assetId);
+    logger.log(
+      outcome === "failed" ? "warn" : "info",
+      "ASSET_DELETE_COMPLETED",
+      {
+        imageId: id,
+        assetId,
+        assetDeleted: outcome === "deleted",
+        ...(reason ? { reason } : {}),
+      },
+    );
   };
 }

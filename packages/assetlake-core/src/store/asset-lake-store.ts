@@ -1,4 +1,9 @@
-import type { EntityRef, ImagePurpose, ImageStatus } from "../contracts";
+import type {
+  EntityRef,
+  ImagePurpose,
+  ImageSource,
+  ImageStatus,
+} from "../contracts";
 
 // Port between the domain and Sanity. The Sanity adapter owns every GROQ query and mutation;
 // the in-memory adapter backs the gate tests. Domain code never sees @sanity/client.
@@ -42,13 +47,6 @@ export interface StoredAsset {
   blurHash: string | null;
 }
 
-// Hotspot/crop travel with the source so presets respect editor focal points.
-export interface ImageSource {
-  asset: { _ref: string };
-  hotspot?: { x: number; y: number; height: number; width: number };
-  crop?: { top: number; bottom: number; left: number; right: number };
-}
-
 export interface ImageRecordView {
   id: string;
   /** Sanity's _rev: a status change is written only if the record is still at this revision. */
@@ -59,6 +57,20 @@ export interface ImageRecordView {
   applicationId: string;
   source: ImageSource;
   asset: StoredAsset;
+}
+
+/** What URL building needs, without the record's status, entity or the full asset document. */
+export interface ImageSourceView {
+  source: ImageSource;
+  width: number | null;
+  height: number | null;
+  lqip: string | null;
+}
+
+export interface ApplicationPolicyRecord {
+  applicationSlug: string;
+  /** The requested policy, else the application's default; null when neither exists. */
+  policy: PolicyRecord | null;
 }
 
 export interface NewImageRecord {
@@ -81,11 +93,14 @@ export interface UploadAssetOptions {
 }
 
 export interface AssetLakeStore {
-  findApplication(id: string): Promise<ApplicationRecord | null>;
-  findPolicy(id: string): Promise<PolicyRecord | null>;
+  findApplicationPolicy(query: {
+    applicationId: string;
+    policyId?: string;
+  }): Promise<ApplicationPolicyRecord | null>;
   findPresetBySlug(slug: string): Promise<PresetRecord | null>;
   listPresets(): Promise<PresetRecord[]>;
   findImage(id: string): Promise<ImageRecordView | null>;
+  findImageSource(id: string): Promise<ImageSourceView | null>;
   findLatestReadyImage(query: {
     entity: EntityRef;
     purpose: ImagePurpose;

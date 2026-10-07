@@ -2,8 +2,10 @@
 // write path (enforced by src/url-boundary.test.ts and ESLint).
 export type {
   AssetLakeImageResult,
+  AssetLakeImageWithSource,
   ImageCropMode,
   ImageFitMode,
+  ImageSource,
   ImageTransform,
   ResponsiveImage,
 } from "./contracts";

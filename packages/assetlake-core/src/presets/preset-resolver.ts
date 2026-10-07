@@ -41,46 +41,58 @@ export function toTransform(
   return parsed.data;
 }
 
+// Unknown slugs are remembered briefly so a caller passing request input (the Express example's
+// ?preset=) can't turn every request into a Sanity read, while a newly published preset still
+// shows up within seconds.
+const UNKNOWN_PRESET_TTL_MS = 5_000;
+
 /**
- * Presets live in Sanity so they can change without a redeploy. A short in-process TTL (default
- * 60s, handoff §13.3) bounds both Sanity reads and how long an edited preset takes to apply.
+ * Presets live in Sanity so they can change without a redeploy. An in-process TTL (default 60s)
+ * bounds both Sanity reads and how long an edited preset takes to apply.
  */
-export function createPresetResolver(dependencies: {
+export function createPresetResolver({
+  store,
+  logger,
+  ttlMs,
+  now,
+}: {
   store: AssetLakeStore;
   logger: Logger;
   ttlMs: number;
   now: () => number;
 }) {
-  const cache = new TtlCache<ImageTransform>(
-    dependencies.ttlMs,
-    dependencies.now,
+  const cache = new TtlCache<ImageTransform | null>(
+    (transform) => (transform ? ttlMs : Math.min(ttlMs, UNKNOWN_PRESET_TTL_MS)),
+    now,
   );
+
+  async function loadTransform(slug: string): Promise<ImageTransform | null> {
+    const record = await store.findPresetBySlug(slug);
+    return record ? toTransform(record, logger) : null;
+  }
 
   return {
     async get(slug: string): Promise<ImageTransform> {
-      const cached = cache.get(slug);
-      if (cached) return cached;
-
-      const record = await dependencies.store.findPresetBySlug(slug);
-      if (!record) {
-        dependencies.logger.log("warn", "PRESET_NOT_FOUND", { slug });
+      const transform = await cache.getOrLoad(slug, () => loadTransform(slug));
+      if (!transform) {
+        logger.log("warn", "PRESET_NOT_FOUND", { slug });
         throw new AssetLakeError(
           "PRESET_NOT_FOUND",
           `Unknown preset "${slug}".`,
         );
       }
-      const transform = toTransform(record, dependencies.logger);
-      cache.set(slug, transform);
       return transform;
     },
 
     async list(): Promise<NamedTransform[]> {
-      const records = await dependencies.store.listPresets();
-      return records.map((record) => ({
+      const records = await store.listPresets();
+      const named = records.map((record) => ({
         slug: record.slug,
         name: record.name,
-        transform: toTransform(record, dependencies.logger),
+        transform: toTransform(record, logger),
       }));
+      for (const { slug, transform } of named) cache.set(slug, transform);
+      return named;
     },
   };
 }

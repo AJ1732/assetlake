@@ -1,5 +1,5 @@
 import type { AssetLakeImageResult } from "../contracts";
-import type { StoredAsset } from "../store/asset-lake-store";
+import type { ImageRecordView, StoredAsset } from "../store/asset-lake-store";
 
 export function normalizeImage(
   id: string,
@@ -26,4 +26,8 @@ export function normalizeImage(
 // than ready (processing, rejected, failed) must never be reported as usable.
 export function toResultStatus(status: string): AssetLakeImageResult["status"] {
   return status === "ready" ? "ready" : "review";
+}
+
+export function toImageResult(view: ImageRecordView): AssetLakeImageResult {
+  return normalizeImage(view.id, toResultStatus(view.status), view.asset);
 }

@@ -9,9 +9,11 @@ import {
   type SetupPlan,
 } from "../setup/setup-plan";
 import type {
+  ApplicationPolicyRecord,
   ApplicationRecord,
   AssetLakeStore,
   ImageRecordView,
+  ImageSourceView,
   NewImageRecord,
   PolicyRecord,
   PresetRecord,
@@ -24,12 +26,7 @@ import {
 } from "../store/setup-store";
 import { readPngDimensions } from "./image-fixtures";
 
-type Failure =
-  | "uploadImageAsset"
-  | "uploadImageAssetFromUrl"
-  | "createImage"
-  | "updateImageStatus"
-  | "deleteAsset";
+export type StoreOperation = keyof (AssetLakeStore & SetupStore);
 
 const httpError = (statusCode: number, message: string) =>
   Object.assign(new Error(message), { statusCode });
@@ -54,9 +51,9 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
   readonly presets = new Map<string, PresetRecord>();
   readonly assets = new Map<string, StoredAsset>();
   readonly images = new Map<string, NewImageRecord>();
-  readonly calls: Record<string, number> = {};
+  private readonly counts = new Map<StoreOperation, number>();
   private readonly revisions = new Map<string, number>();
-  private readonly failures = new Map<Failure, Error>();
+  private readonly failures = new Map<StoreOperation, Error>();
   private readonly remoteSources = new Map<string, Uint8Array>();
 
   constructor(seed: InMemoryStoreSeed = {}) {
@@ -73,17 +70,23 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
   }
 
   failNext(
-    operation: Failure,
+    operation: StoreOperation,
     error: Error = new Error(`${operation} failed`),
   ): void {
     this.failures.set(operation, error);
   }
 
-  private track(operation: string): void {
-    this.calls[operation] = (this.calls[operation] ?? 0) + 1;
-    const failure = this.failures.get(operation as Failure);
+  /** Calls to one store operation, or to all of them when none is named. */
+  callCount(operation?: StoreOperation): number {
+    if (operation) return this.counts.get(operation) ?? 0;
+    return [...this.counts.values()].reduce((total, count) => total + count, 0);
+  }
+
+  private track(operation: StoreOperation): void {
+    this.counts.set(operation, this.callCount(operation) + 1);
+    const failure = this.failures.get(operation);
     if (failure) {
-      this.failures.delete(operation as Failure);
+      this.failures.delete(operation);
       throw failure;
     }
   }
@@ -113,12 +116,23 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
     this.revisions.set(id, (this.revisions.get(id) ?? 0) + 1);
   }
 
-  async findApplication(id: string) {
-    return this.applications.get(id) ?? null;
-  }
-
-  async findPolicy(id: string) {
-    return this.policies.get(id) ?? null;
+  async findApplicationPolicy({
+    applicationId,
+    policyId,
+  }: {
+    applicationId: string;
+    policyId?: string;
+  }): Promise<ApplicationPolicyRecord | null> {
+    this.track("findApplicationPolicy");
+    const application = this.applications.get(applicationId);
+    if (!application) return null;
+    const effectivePolicyId = policyId ?? application.defaultPolicyId;
+    return {
+      applicationSlug: application.slug,
+      policy: effectivePolicyId
+        ? (this.policies.get(effectivePolicyId) ?? null)
+        : null,
+    };
   }
 
   async findPresetBySlug(slug: string) {
@@ -127,14 +141,29 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
   }
 
   async listPresets() {
+    this.track("listPresets");
     return [...this.presets.values()].sort((left, right) =>
       left.slug.localeCompare(right.slug),
     );
   }
 
   async findImage(id: string) {
+    this.track("findImage");
     const record = this.images.get(id);
     return record ? this.view(record) : null;
+  }
+
+  async findImageSource(id: string): Promise<ImageSourceView | null> {
+    this.track("findImageSource");
+    const record = this.images.get(id);
+    if (!record) return null;
+    const { source, asset } = this.view(record);
+    return {
+      source,
+      width: asset.width,
+      height: asset.height,
+      lqip: asset.lqip,
+    };
   }
 
   async findLatestReadyImage({
@@ -144,6 +173,7 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
     entity: EntityRef;
     purpose: string;
   }) {
+    this.track("findLatestReadyImage");
     const matches = [...this.images.values()]
       .filter(
         (record) =>
@@ -162,6 +192,7 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
     applicationId: string;
     since: string;
   }) {
+    this.track("countImagesSince");
     return [...this.images.values()].filter(
       (record) =>
         record.applicationId === applicationId && record.uploadedAt >= since,
@@ -169,6 +200,7 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
   }
 
   async countImagesForEntity(entity: EntityRef) {
+    this.track("countImagesForEntity");
     return [...this.images.values()].filter((record) =>
       sameEntity(record.entity, entity),
     ).length;
@@ -182,8 +214,8 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
     return this.storeAsset(body, contentType);
   }
 
-  // Mirrors what Sanity answered in the B11 spikes: 400 for an unreachable source, 422 when the
-  // bytes are not an image it can decode.
+  // Mirrors Sanity's from-url endpoint: 400 for an unreachable source, 422 when the bytes are not
+  // an image it can decode.
   async uploadImageAssetFromUrl(url: string) {
     this.track("uploadImageAssetFromUrl");
     const body = this.remoteSources.get(url);
@@ -236,10 +268,16 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
   }
 
   async deleteImage(id: string) {
+    this.track("deleteImage");
     this.images.delete(id);
   }
 
   async findMissingSetup(plan: SetupPlan) {
+    this.track("findMissingSetup");
+    return this.missingSetup(plan);
+  }
+
+  private missingSetup(plan: SetupPlan) {
     const present = new Set<string>();
     for (const policy of planPolicies(plan)) {
       if (this.policies.has(policy.id)) present.add(policy.id);
@@ -253,7 +291,8 @@ export class InMemoryStore implements AssetLakeStore, SetupStore {
   }
 
   async ensureSetup(plan: SetupPlan, mode: SetupMode) {
-    const missing = new Set(await this.findMissingSetup(plan));
+    this.track("ensureSetup");
+    const missing = new Set(this.missingSetup(plan));
     const shouldWrite = (id: string) => mode === "reset" || missing.has(id);
 
     for (const policy of planPolicies(plan)) {
